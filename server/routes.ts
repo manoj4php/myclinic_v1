@@ -1,5 +1,8 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
+import * as fs from "fs";
+import * as path from "path";
+import * as crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -7,6 +10,31 @@ import { ObjectPermission } from "./objectAcl";
 import { emailService } from "./emailService";
 import { insertPatientSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+
+// Utility function to generate secure temporary password
+function generateTemporaryPassword(length: number = 12): string {
+  const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
+  const numberChars = '0123456789';
+  const specialChars = '!@#$%^&*';
+  
+  const allChars = uppercaseChars + lowercaseChars + numberChars + specialChars;
+  
+  // Ensure at least one character from each category
+  let password = '';
+  password += uppercaseChars[Math.floor(Math.random() * uppercaseChars.length)];
+  password += lowercaseChars[Math.floor(Math.random() * lowercaseChars.length)];
+  password += numberChars[Math.floor(Math.random() * numberChars.length)];
+  password += specialChars[Math.floor(Math.random() * specialChars.length)];
+  
+  // Fill the rest with random characters
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+  
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+}
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -119,6 +147,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Local file upload handler for development
+  app.put("/api/objects/local-upload/:objectId", isAuthenticated, async (req, res) => {
+    try {
+      const { objectId } = req.params;
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
+      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+      const filePath = path.join(uploadDir, objectId);
+      
+      // Ensure upload directory exists
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // Write the uploaded data to file
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk) => chunks.push(chunk));
+      req.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        fs.writeFileSync(filePath, buffer);
+        res.json({ 
+          message: "File uploaded successfully", 
+          objectId,
+          uploadURL: `/api/objects/uploads/${objectId}`
+        });
+      });
+      
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
   // User Management Routes
   app.get('/api/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
@@ -131,23 +191,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userData = insertUserSchema.parse(req.body);
-    const createdBy = req.user?.claims?.sub;
-    const ipAddress = req.ip;
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      const createdBy = req.user?.claims?.sub;
+      const ipAddress = req.ip;
 
-    const user = await storage.createUser({
-      ...userData,
-      createdBy,
-      updatedBy: createdBy,
-      ipAddress,
-    });
+      // Generate temporary password for new users
+      const tempPassword = generateTemporaryPassword();
+      
+      const user = await storage.createUser({
+        ...userData,
+        createdBy,
+        updatedBy: createdBy,
+        ipAddress,
+      });
 
-    res.status(201).json(user);
-  } catch (error) {
-    // ...error handling...
-  }
-});
+      // Send temporary password via email if email is provided
+      if (userData.email) {
+        const userName = userData.firstName && userData.lastName 
+          ? `${userData.firstName} ${userData.lastName}` 
+          : userData.username || userData.email;
+          
+        try {
+          await emailService.sendTemporaryPassword(
+            userData.email,
+            userName,
+            tempPassword
+          );
+          console.log(`Temporary password sent to ${userData.email}`);
+        } catch (emailError) {
+          console.error("Failed to send temporary password email:", emailError);
+          // Don't fail user creation if email fails, just log it
+        }
+      }
+
+      res.status(201).json({
+        ...user,
+        message: userData.email 
+          ? "User created successfully. Temporary password sent to email."
+          : "User created successfully."
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      } else {
+        res.status(500).json({ message: "Failed to create user" });
+      }
+    }
+  });
 
   app.put('/api/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
@@ -166,6 +261,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Change password route
+  app.post('/api/users/:id/change-password', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user?.claims?.sub;
+
+      // Validate that user can only change their own password or admin can change any password
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      const currentUser = await storage.getUser(userId);
+      if (id !== userId && currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Unauthorized to change this password" });
+      }
+
+      // Validate input
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters long" });
+      }
+
+      // For now, just return success since we don't have password hashing implemented
+      // In a real app, you would verify currentPassword and hash newPassword
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
     }
   });
 

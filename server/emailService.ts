@@ -81,6 +81,40 @@ export class EmailService {
       html,
     });
   }
+
+  async sendTemporaryPassword(
+    userEmail: string,
+    userName: string,
+    tempPassword: string
+  ): Promise<boolean> {
+    const subject = 'Welcome to My Clinic Portal - Your Temporary Password';
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #3B82F6;">Welcome to My Clinic Portal</h2>
+        <p>Hello ${userName},</p>
+        <p>Your account has been created successfully. Here are your login credentials:</p>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Email:</strong> ${userEmail}</p>
+          <p><strong>Temporary Password:</strong> <code style="background-color: #e9ecef; padding: 2px 4px; border-radius: 3px;">${tempPassword}</code></p>
+        </div>
+        <p><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
+        <p>
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}" 
+             style="background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Login to Portal
+          </a>
+        </p>
+        <p>Best regards,<br>My Clinic Portal Team</p>
+      </div>
+    `;
+
+    return await this.sendEmail({
+      to: userEmail,
+      from: process.env.GMAIL_USER || 'noreply@clinic.com',
+      subject,
+      html,
+    });
+  }
 }
 
 export const emailService = EmailService.getInstance();
