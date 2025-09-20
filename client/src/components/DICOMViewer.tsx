@@ -92,6 +92,13 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
         try {
           cornerstoneWADOImageLoader.configure({
             useWebWorkers: false, // Disable web workers to avoid CORS issues
+            beforeSend: function(xhr: XMLHttpRequest) {
+              // Add JWT authentication header for our API endpoints
+              const token = localStorage.getItem('authToken');
+              if (token) {
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+              }
+            }
           });
         } catch (configError) {
           console.warn('DICOM Viewer: WADO loader configuration warning:', configError);
@@ -193,8 +200,9 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
       let imageId: string;
       
       if (isDICOM) {
-        // For DICOM files
-        imageId = `wadouri:${imageUrl}`;
+        // For DICOM files, ensure full URL for WADO loader
+        const fullUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+        imageId = `wadouri:${fullUrl}`;
         console.log('DICOM Viewer: Loading as DICOM with imageId:', imageId);
       } else {
         // For regular images, ensure proper URL scheme

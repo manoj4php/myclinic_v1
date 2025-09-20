@@ -115,7 +115,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.claims?.sub;
     const objectStorageService = new ObjectStorageService();
+    
     try {
+      // Handle local upload files
+      if (req.path.startsWith("/objects/uploads/")) {
+        const objectId = req.path.replace("/objects/uploads/", "");
+        const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
+        const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+        const filePath = path.join(uploadDir, objectId);
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({ message: "File not found" });
+        }
+        
+        // Set appropriate headers for file serving
+        const fileExtension = path.extname(filePath).toLowerCase();
+        let contentType = 'application/octet-stream';
+        
+        if (fileExtension === '.dcm' || fileExtension === '.dicom') {
+          contentType = 'application/dicom';
+        } else if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+          contentType = 'image/jpeg';
+        } else if (fileExtension === '.png') {
+          contentType = 'image/png';
+        } else if (fileExtension === '.gif') {
+          contentType = 'image/gif';
+        }
+        
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        return;
+      }
+      
+      // Handle cloud storage files
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
@@ -176,6 +216,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error uploading file:", error);
       res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  // Local file serve handler for development
+  app.get("/api/objects/local-upload/:objectId", isAuthenticated, async (req, res) => {
+    try {
+      const { objectId } = req.params;
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
+      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+      const filePath = path.join(uploadDir, objectId);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Set appropriate headers for file serving
+      const fileExtension = path.extname(objectId).toLowerCase();
+      let contentType = 'application/octet-stream';
+      
+      if (fileExtension === '.dcm' || fileExtension === '.dicom') {
+        contentType = 'application/dicom';
+      } else if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+        contentType = 'image/jpeg';
+      } else if (fileExtension === '.png') {
+        contentType = 'image/png';
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error("Error serving file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
+  // Local file serving handler for development
+  app.get("/api/objects/uploads/:objectId", isAuthenticated, async (req, res) => {
+    try {
+      const { objectId } = req.params;
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
+      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+      const filePath = path.join(uploadDir, objectId);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Set appropriate headers for file serving
+      // For DICOM files, use application/dicom content type
+      const fileExtension = path.extname(filePath).toLowerCase();
+      let contentType = 'application/octet-stream';
+      
+      if (fileExtension === '.dcm' || fileExtension === '.dicom') {
+        contentType = 'application/dicom';
+      } else if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+        contentType = 'image/jpeg';
+      } else if (fileExtension === '.png') {
+        contentType = 'image/png';
+      } else if (fileExtension === '.gif') {
+        contentType = 'image/gif';
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error("Error serving uploaded file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
     }
   });
 
@@ -530,6 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try database first, fallback to mock data
       try {
         const files = await storage.getPatientFiles(id);
+        console.log('Raw files from database:', files.map(f => ({ id: f.id, fileName: f.fileName, filePath: f.filePath })));
         res.json(files);
         return;
       } catch (dbError) {

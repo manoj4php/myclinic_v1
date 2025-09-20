@@ -202,6 +202,28 @@ export class ObjectStorageService {
   normalizeObjectEntityPath(
     rawPath: string,
   ): string {
+    // Handle local development upload URLs - full URLs from localhost
+    if (rawPath.includes("/api/objects/local-upload/")) {
+      // Extract the object ID from local upload URLs like:
+      // "http://localhost:5000/api/objects/local-upload/8f246806..."
+      const match = rawPath.match(/\/api\/objects\/local-upload\/([^/?]+)/);
+      if (match) {
+        return `/objects/uploads/${match[1]}`;
+      }
+    }
+    
+    // Handle local development upload URLs - relative paths
+    if (rawPath.startsWith("/api/objects/uploads/")) {
+      // Extract the object ID from the local upload path
+      const objectId = rawPath.replace("/api/objects/uploads/", "");
+      return `/objects/uploads/${objectId}`;
+    }
+    
+    // Handle the case where the path is already normalized to /objects/uploads/
+    if (rawPath.startsWith("/objects/uploads/")) {
+      return rawPath; // Already normalized
+    }
+    
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;
     }
