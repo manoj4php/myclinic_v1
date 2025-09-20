@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { LoadingOverlay } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { insertUserSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,6 +16,7 @@ import { z } from "zod";
 
 const formSchema = insertUserSchema.extend({
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Valid email is required").min(1, "Email is required"),
 });
 
 interface UserFormProps {
@@ -73,8 +75,12 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <LoadingOverlay 
+      isLoading={createUserMutation.isPending}
+      message={isEditing ? "Updating user..." : "Creating user..."}
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
@@ -305,5 +311,6 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         </div>
       </form>
     </Form>
+    </LoadingOverlay>
   );
 }
