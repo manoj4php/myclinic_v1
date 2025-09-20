@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { LoadingOverlay } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { insertPatientSchema } from "@shared/schema";
@@ -99,12 +100,16 @@ export default function AddPatient() {
   };
 
   return (
-    <div className="p-6" data-testid="add-patient-view">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Add New Patient</h2>
-          <p className="text-muted-foreground">Enter patient information and upload medical files</p>
-        </div>
+    <LoadingOverlay 
+      isLoading={createPatientMutation.isPending}
+      message="Creating patient..."
+    >
+      <div className="p-6" data-testid="add-patient-view">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-foreground">Add New Patient</h2>
+            <p className="text-muted-foreground">Enter patient information and upload medical files</p>
+          </div>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -385,5 +390,6 @@ export default function AddPatient() {
         </Form>
       </div>
     </div>
+    </LoadingOverlay>
   );
 }

@@ -1,6 +1,8 @@
 import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
+import * as fs from "fs";
+import * as path from "path";
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -10,6 +12,9 @@ import {
 } from "./objectAcl";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+
+// Check if we're running on Replit
+const isReplit = process.env.REPLIT_DEPLOYMENT || process.env.REPL_OWNER;
 
 // The object storage client is used to interact with the object storage service.
 export const objectStorageClient = new Storage({
@@ -141,15 +146,27 @@ export class ObjectStorageService {
     }
 
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    
+    // For local development, return a local upload endpoint
+    if (!isReplit) {
+      // Ensure upload directory exists
+      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // Return local upload URL that our server will handle
+      return `/api/objects/local-upload/${objectId}`;
+    }
 
+    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
     // Sign URL for PUT method with TTL
     return signObjectURL({
       bucketName,
       objectName,
-      method: "PUT",
+      method: "PUT", 
       ttlSec: 900,
     });
   }

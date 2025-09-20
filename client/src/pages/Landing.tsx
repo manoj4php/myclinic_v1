@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
+import { ClinicLogoText } from "@/components/Logo";
 
 export default function Landing() {
   const [email, setEmail] = useState("");
@@ -19,10 +20,9 @@ export default function Landing() {
       <Card className="w-full max-w-md shadow-2xl">
         <CardContent className="p-8">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="fas fa-hospital-alt text-3xl text-primary-foreground"></i>
+            <div className="flex justify-center mb-4">
+              <ClinicLogoText size="lg" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">My Clinic Portal</h1>
             <p className="text-muted-foreground mt-2">Healthcare Management System</p>
           </div>
           

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import UserForm from "@/components/UserForm";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import AnalyticsCard from "@/components/AnalyticsCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +20,7 @@ export default function UserManagement() {
   const [selectedRole, setSelectedRole] = useState("");
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [changePasswordUser, setChangePasswordUser] = useState<{id: string, name: string} | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["/api/users"],
@@ -246,6 +248,12 @@ export default function UserManagement() {
                                 variant="ghost" 
                                 size="sm"
                                 className="text-muted-foreground hover:text-foreground"
+                                onClick={() => setChangePasswordUser({
+                                  id: user.id,
+                                  name: user.firstName && user.lastName 
+                                    ? `${user.firstName} ${user.lastName}` 
+                                    : user.email
+                                })}
                               >
                                 <i className="fas fa-key"></i>
                               </Button>
@@ -295,6 +303,16 @@ export default function UserManagement() {
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Change Password Dialog */}
+      {changePasswordUser && (
+        <ChangePasswordDialog
+          isOpen={!!changePasswordUser}
+          onOpenChange={() => setChangePasswordUser(null)}
+          userId={changePasswordUser.id}
+          userName={changePasswordUser.name}
+        />
       )}
     </div>
   );
