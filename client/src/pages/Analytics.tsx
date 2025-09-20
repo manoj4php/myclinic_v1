@@ -3,16 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnalyticsCard from "@/components/AnalyticsCard";
 import { useState } from "react";
+import type { DashboardStats, SpecialtyData } from "@/types";
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("all");
   const [specialty, setSpecialty] = useState("all");
 
-  const { data: dashboardStats } = useQuery({
+  const { data: dashboardStats } = useQuery<DashboardStats>({
     queryKey: ["/api/analytics/dashboard-stats"],
   });
 
-  const { data: specialtyData } = useQuery({
+  const { data: specialtyData } = useQuery<SpecialtyData[]>({
     queryKey: ["/api/analytics/patient-count-by-specialty"],
   });
 
@@ -143,7 +144,7 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {specialtyData?.map((item: any) => (
+              {specialtyData?.map((item: SpecialtyData) => (
                 <div 
                   key={item.specialty}
                   className={`flex items-center justify-between p-3 rounded-md ${specialtyColors[item.specialty as keyof typeof specialtyColors]} text-white`}
@@ -155,7 +156,7 @@ export default function Analytics() {
                   <div className="text-right">
                     <div className="font-bold">{item.count}</div>
                     <div className="text-xs opacity-90">
-                      {specialtyData && ((item.count / specialtyData.reduce((sum: number, s: any) => sum + s.count, 0)) * 100).toFixed(1)}%
+                      {specialtyData && ((item.count / specialtyData.reduce((sum: number, s: SpecialtyData) => sum + s.count, 0)) * 100).toFixed(1)}%
                     </div>
                   </div>
                 </div>

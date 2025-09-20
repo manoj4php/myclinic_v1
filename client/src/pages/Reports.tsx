@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import type { Report } from "@/types";
 
 export default function Reports() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,7 +13,7 @@ export default function Reports() {
   const [selectedType, setSelectedType] = useState("");
 
   // This would fetch actual reports data
-  const { data: reports, isLoading } = useQuery({
+  const { data: reports, isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
     queryFn: async () => {
       // Mock data for now since reports endpoint doesn't exist yet
@@ -176,9 +177,9 @@ export default function Reports() {
                 </div>
               ))}
             </div>
-          ) : reports?.length > 0 ? (
+          ) : reports && reports.length > 0 ? (
             <div className="space-y-4">
-              {reports.map((report: any) => (
+              {reports.map((report: Report) => (
                 <div key={report.id} className="flex items-center justify-between p-4 border border-border rounded hover:bg-muted/50">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">

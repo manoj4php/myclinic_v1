@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, createContext, useContext, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Menu } from "lucide-react";
+import type { User, Notification } from "@/types";
 
 const navigationItems = [
   { path: "/", label: "Dashboard", icon: "fa-chart-pie" },
@@ -51,11 +52,11 @@ export default function Sidebar() {
   const { user } = useAuth();
   const { isCollapsed, toggleSidebar } = useSidebar();
 
-  const { data: notifications } = useQuery({
+  const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
   });
 
-  const unreadNotifications = notifications?.filter((n: any) => !n.isRead)?.length || 0;
+  const unreadNotifications = notifications?.filter((n: Notification) => !n.isRead)?.length || 0;
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
