@@ -17,6 +17,7 @@ import Notifications from "@/pages/Notifications";
 import NotFound from "@/pages/not-found";
 import Sidebar, { SidebarProvider, useSidebar } from "@/components/Sidebar";
 import Header from "@/components/Header";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 function AuthenticatedLayout() {
   const { isCollapsed } = useSidebar();
@@ -68,14 +69,16 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider>
-          <Toaster />
-          <Router />
-        </SidebarProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <SidebarProvider>
+            <Toaster />
+            <Router />
+          </SidebarProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

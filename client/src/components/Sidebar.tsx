@@ -5,6 +5,7 @@ import { useState, createContext, useContext, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Menu } from "lucide-react";
 import type { User, Notification } from "@/types";
+import { ClinicLogo, ClinicLogoText } from "@/components/Logo";
 
 const navigationItems = [
   { path: "/", label: "Dashboard", icon: "fa-chart-pie" },
@@ -86,15 +87,14 @@ export default function Sidebar() {
     <div className={`fixed left-0 top-0 h-full bg-card border-r border-border transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
       <div className={`border-b border-border transition-all duration-300 ${isCollapsed ? 'p-4' : 'p-6'}`}>
         <div className="flex items-center justify-between">
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <i className="fas fa-hospital-alt text-primary-foreground"></i>
-            </div>
-            {!isCollapsed && (
-              <div>
-                <h2 className="font-semibold text-foreground">My Clinic Portal</h2>
-                <p className="text-sm text-muted-foreground capitalize">{getRoleDisplay()}</p>
-              </div>
+          <div className={`flex ${isCollapsed ? 'justify-center' : 'flex-col space-y-1'}`}>
+            {isCollapsed ? (
+              <ClinicLogo size="sm" />
+            ) : (
+              <>
+                <ClinicLogoText size="sm" />
+                <p className="text-xs text-muted-foreground capitalize ml-12">{getRoleDisplay()}</p>
+              </>
             )}
           </div>
           <Button
