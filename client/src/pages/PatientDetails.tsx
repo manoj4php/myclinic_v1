@@ -34,6 +34,7 @@ export default function PatientDetails() {
   const handleGetUploadParameters = async () => {
     const response = await apiRequest("POST", "/api/objects/upload", {});
     const data = await response.json();
+    console.log("Upload URL received:", data.uploadURL);
     return {
       method: "PUT" as const,
       url: data.uploadURL,

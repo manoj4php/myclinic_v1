@@ -155,8 +155,9 @@ export class ObjectStorageService {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
       
-      // Return local upload URL that our server will handle
-      return `/api/objects/local-upload/${objectId}`;
+      // Return local upload URL that our server will handle (full URL for Uppy)
+      const port = process.env.PORT || 5000;
+      return `http://localhost:${port}/api/objects/local-upload/${objectId}`;
     }
 
     const fullPath = `${privateObjectDir}/uploads/${objectId}`;

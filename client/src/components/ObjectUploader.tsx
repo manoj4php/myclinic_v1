@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  onGetUploadParameters: () => Promise<{
+  onGetUploadParameters: (file?: any) => Promise<{
     method: "PUT";
     url: string;
   }>;
@@ -40,10 +40,10 @@ interface ObjectUploaderProps {
  * @param props - Component props
  * @param props.maxNumberOfFiles - Maximum number of files allowed to be uploaded
  *   (default: 1)
- * @param props.maxFileSize - Maximum file size in bytes (default: 10MB)
+ * @param props.maxFileSize - Maximum file size in bytes (default: 100MB)
  * @param props.onGetUploadParameters - Function to get upload parameters (method and URL).
  *   Typically used to fetch a presigned URL from the backend server for direct-to-S3
- *   uploads.
+ *   uploads. The function may receive a file parameter for advanced use cases.
  * @param props.onComplete - Callback function called when upload is complete. Typically
  *   used to make post-upload API calls to update server state and set object ACL
  *   policies.
@@ -52,7 +52,7 @@ interface ObjectUploaderProps {
  */
 export function ObjectUploader({
   maxNumberOfFiles = 1,
-  maxFileSize = 10485760, // 10MB default
+  maxFileSize = 104857600, // 100MB default (increased from 10MB)
   onGetUploadParameters,
   onComplete,
   buttonClassName,
@@ -69,7 +69,17 @@ export function ObjectUploader({
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
-        getUploadParameters: onGetUploadParameters,
+        getUploadParameters: async (file) => {
+          const uploadParams = await onGetUploadParameters(file);
+          // Add authentication header for local uploads
+          const token = localStorage.getItem("jwtToken");
+          return {
+            ...uploadParams,
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          };
+        },
       })
       .on("complete", (result) => {
         onComplete?.(result);

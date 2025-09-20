@@ -82,6 +82,7 @@ export default function AddPatient() {
   const handleGetUploadParameters = async () => {
     const response = await apiRequest("POST", "/api/objects/upload", {});
     const data = await response.json();
+    console.log("Upload URL received:", data.uploadURL);
     return {
       method: "PUT" as const,
       url: data.uploadURL,
@@ -335,7 +336,7 @@ export default function AddPatient() {
                   
                   <ObjectUploader
                     maxNumberOfFiles={10}
-                    maxFileSize={10485760}
+                    maxFileSize={104857600} // 100MB limit
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={handleUploadComplete}
                     buttonClassName="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
