@@ -1,0 +1,5 @@
+{
+    "github.copilot.nextEditSuggestions.fixes": false,
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "github.copilot.chat.terminalChatLocation": "chatView"
+}

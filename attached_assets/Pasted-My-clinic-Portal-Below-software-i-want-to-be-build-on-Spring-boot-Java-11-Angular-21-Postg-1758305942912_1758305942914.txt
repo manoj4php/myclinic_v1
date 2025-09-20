@@ -1,0 +1,58 @@
+My clinic Portal 
+  Below software i want to be build on Spring boot + Java 11 + Angular 21 + Postgresql 
+    spring boot will have controllers , services , reporsitories , rest apis and proper exception handling 
+    with spring secuirity implemented 
+    angular will have routes , active gurds , serivices , components , all required to build this app
+    Roles 
+          1.Super admin
+          2.Admin 
+          3.User
+    add user form            
+            we need postgesql for it 
+            super admin entry into db we will do by script so needed a sql script for same 
+            username , email , phone , name , address , specilities if doctor or normal user / technician 
+            mail notificaion on or off 
+            permissions checkboxes 
+   	    all tables of the database will have created_at , updated_at, created_by, updated_by,ip_adress
+            archival tables also needed for patient data specialy patient_table will be archived which will be configurable like six monthly , yearly archival 
+            and can be viewed using report section so i need a separate report section where doctor type user can dowbload report into excel,csv
+    Permissions 
+          1.Add/ Edit / Delete / View     
+    Specialities /category of doctor will be 
+          1.Radiology
+          2.Pediatric
+          3.Gynac
+          4.Medicines
+          5.Surgon  
+    Bell Notifications  
+          below noticaitons will send to doctor once patient added to portal even if edits 
+          notifications will be like e.g Patient : Xyx Added to My clinic portal and view link into mail notificaiton 
+          similar will be for update also 
+          1.Email
+          2.SMS 
+    Dashboard 
+          1.Recent Patient added 
+          2.All patients link 
+      	  3.Analytics (Visible only for Specialities users )
+               1.By Days (Today ,Yesterday , ALL etc )
+               2.by a glossary of common medical abbreviations (MR, CR, US, DX, NM, PT, PX, MG)
+               3.Weekly,Monthly ,Six Monthly, Yearly 
+          4.Add patient link for user who can add patient details like - patient form 
+       		Patient Name
+		Date of Birth / Age
+		Gender
+		Contact Information (phone, email, address)
+                File Upload (This will have all types report upload facility eg. radiology scan images )
+      Doctor after login 
+           1.  can view patien listings 
+           2.  can edit patient info 
+           3.  can view uploaded images / repots / scan images  into new tab 
+           4. doctor can select pre saved report formats where patient basic info will be there like patient name age and history so doctor needs to just change it based on the new patient 
+            and create a new report which can upload to same patient 
+      All need rest api  based so mobile friendly app can created in future 
+      implement swagger also 
+           
+      
+      
+           
+                    	
