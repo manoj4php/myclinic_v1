@@ -19,24 +19,68 @@ interface AuthenticatedRequest extends Request {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  debugger;
   await setupAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {
-    debugger;
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "User ID not found" });
       }
-      const user = await storage.getUser(userId);
-      res.json(user);
+      
+      // Try to get user from database, fallback to mock user if DB not available
+      try {
+        const user = await storage.getUser(userId);
+        if (user) {
+          res.json(user);
+          return;
+        }
+      } catch (dbError) {
+        console.warn("Database not available, using mock user data");
+      }
+      
+      // Mock user data for demo
+      const mockUser = {
+        id: userId,
+        email: "admin@myclinic.com",
+        firstName: "Admin", 
+        lastName: "User",
+        role: "admin",
+        specialty: "medicines",
+        phone: "+1234567890",
+        isActive: true,
+        emailNotifications: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      res.json(mockUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
-   
+  });
+
+  // Temporary route to seed database with test user (remove in production)
+  app.post('/api/seed-user', async (req, res) => {
+    try {
+      const testUser = await storage.upsertUser({
+        id: 'test-user-1',
+        email: 'admin@myclinic.com',
+        firstName: 'Admin',
+        lastName: 'User',
+        username: 'admin',
+        role: 'admin',
+        specialty: 'medicines',
+        isActive: true,
+        emailNotifications: true,
+      });
+      res.json({ message: 'Test user created', user: testUser });
+    } catch (error) {
+      console.error("Error creating test user:", error);
+      res.status(500).json({ message: "Failed to create test user" });
+    }
   });
 
   // Object storage routes for file serving

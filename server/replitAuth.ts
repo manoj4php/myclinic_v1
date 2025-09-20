@@ -75,22 +75,41 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      // Replace with your user lookup and password check logic
-      const user = await storage.findUserByEmail(email);
-      
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
+      // Mock user authentication for demo (remove in production)
+      if (email === "admin@myclinic.com" && password === "admin123") {
+        const mockUser = {
+          id: "test-user-1",
+          email: "admin@myclinic.com",
+          firstName: "Admin",
+          lastName: "User",
+          role: "admin",
+          specialty: "medicines"
+        };
+        
+        const token = generateJwt(mockUser);
+        res.json({ token });
+        return;
       }
 
-      // Note: In production, you should hash passwords and compare hashes
-      // For development, we'll add a simple password field check
-      // This is a temporary solution - implement proper password hashing in production
-      if (password !== "admin123") { // Simple check for demo
+      // Try database authentication if available
+      try {
+        const user = await storage.findUserByEmail(email);
+        
+        if (!user) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        // Note: In production, you should hash passwords and compare hashes
+        if (password !== "admin123") { // Simple check for demo
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        const token = generateJwt(user);
+        res.json({ token });
+      } catch (dbError) {
+        console.warn("Database not available, using mock authentication");
         return res.status(401).json({ message: "Invalid credentials" });
       }
-
-      const token = generateJwt(user);
-      res.json({ token });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ message: "Internal server error" });
