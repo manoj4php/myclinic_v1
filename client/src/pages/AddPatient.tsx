@@ -256,7 +256,7 @@ export default function AddPatient() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assigned Doctor</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-patient-doctor">
                               <SelectValue placeholder="Select Doctor" />
