@@ -80,63 +80,84 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
     try {
       // Ensure cornerstone tools is initialized only once globally
       if (!window.cornerstoneToolsInitialized) {
-        // Initialize cornerstone
-        cornerstoneWebImageLoader.external.cornerstone = cornerstone;
-        cornerstoneWebImageLoader.external.dicomParser = dicomParser;
+        console.log('DICOM Viewer: Initializing cornerstone libraries...');
         
-        // Initialize WADO image loader for DICOM
-        cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-        cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
-        
-        // Configure WADO loader with error handling
-        try {
-          cornerstoneWADOImageLoader.configure({
-            useWebWorkers: false, // Disable web workers to avoid CORS issues
-            beforeSend: function(xhr: XMLHttpRequest) {
-              // Add JWT authentication header for our API endpoints
-              const token = localStorage.getItem('authToken');
-              if (token) {
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-              }
-            }
-          });
-        } catch (configError) {
-          console.warn('DICOM Viewer: WADO loader configuration warning:', configError);
+        // Initialize cornerstone web image loader
+        if (cornerstoneWebImageLoader && cornerstoneWebImageLoader.external) {
+          cornerstoneWebImageLoader.external.cornerstone = cornerstone;
+          if (dicomParser) cornerstoneWebImageLoader.external.dicomParser = dicomParser;
         }
         
-        // Register image loaders
-        cornerstone.registerImageLoader('wadouri', cornerstoneWADOImageLoader.wadouri.loadImage);
-        cornerstone.registerImageLoader('http', cornerstoneWebImageLoader.loadImage);
-        cornerstone.registerImageLoader('https', cornerstoneWebImageLoader.loadImage);
+        // Initialize WADO image loader for DICOM
+        if (cornerstoneWADOImageLoader && cornerstoneWADOImageLoader.external) {
+          cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+          if (dicomParser) cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+          
+          // Configure WADO loader with error handling
+          try {
+            cornerstoneWADOImageLoader.configure({
+              useWebWorkers: false, // Disable web workers to avoid CORS issues
+              beforeSend: function(xhr: XMLHttpRequest) {
+                // Add JWT authentication header for our API endpoints
+                const token = localStorage.getItem('jwtToken');
+                if (token) {
+                  xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                }
+              }
+            });
+            console.log('DICOM Viewer: WADO loader configured successfully');
+          } catch (configError) {
+            console.warn('DICOM Viewer: WADO loader configuration warning:', configError);
+          }
+        }
+        
+        // Register image loaders with error handling
+        try {
+          if (cornerstoneWADOImageLoader?.wadouri?.loadImage) {
+            cornerstone.registerImageLoader('wadouri', cornerstoneWADOImageLoader.wadouri.loadImage);
+            console.log('DICOM Viewer: WADO image loader registered');
+          }
+          if (cornerstoneWebImageLoader?.loadImage) {
+            cornerstone.registerImageLoader('http', cornerstoneWebImageLoader.loadImage);
+            cornerstone.registerImageLoader('https', cornerstoneWebImageLoader.loadImage);
+            console.log('DICOM Viewer: Web image loaders registered');
+          }
+        } catch (loaderError) {
+          console.warn('DICOM Viewer: Image loader registration warning:', loaderError);
+        }
         
         // Initialize cornerstone tools with minimal configuration
-        cornerstoneTools.external.cornerstone = cornerstone;
-        cornerstoneTools.external.cornerstoneMath = cornerstoneMath;
-        
-        try {
-          cornerstoneTools.init({
-            mouseEnabled: true,
-            touchEnabled: false, // Disable touch to avoid pointer events issues
-            globalToolSyncEnabled: false,
-            showSVGCursors: false, // Disable SVG cursors to avoid rendering issues
-          });
+        if (cornerstoneTools) {
+          cornerstoneTools.external.cornerstone = cornerstone;
+          if (cornerstoneMath) cornerstoneTools.external.cornerstoneMath = cornerstoneMath;
           
-          // Add tools only once globally
-          cornerstoneTools.addTool(cornerstoneTools.WwwcTool);
-          cornerstoneTools.addTool(cornerstoneTools.PanTool);
-          cornerstoneTools.addTool(cornerstoneTools.ZoomTool);
-          cornerstoneTools.addTool(cornerstoneTools.LengthTool);
-          cornerstoneTools.addTool(cornerstoneTools.AngleTool);
-          cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool);
-          cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool);
-          cornerstoneTools.addTool(cornerstoneTools.ArrowAnnotateTool);
-          
-        } catch (toolsError) {
-          console.warn('DICOM Viewer: Tools initialization warning:', toolsError);
-          // Continue without tools if initialization fails
+          try {
+            cornerstoneTools.init({
+              mouseEnabled: true,
+              touchEnabled: false, // Disable touch to avoid pointer events issues
+              globalToolSyncEnabled: false,
+              showSVGCursors: false, // Disable SVG cursors to avoid rendering issues
+            });
+            
+            // Add tools only once globally - using optional chaining to prevent errors
+            if (cornerstoneTools.WwwcTool) cornerstoneTools.addTool(cornerstoneTools.WwwcTool);
+            if (cornerstoneTools.PanTool) cornerstoneTools.addTool(cornerstoneTools.PanTool);
+            if (cornerstoneTools.ZoomTool) cornerstoneTools.addTool(cornerstoneTools.ZoomTool);
+            if (cornerstoneTools.LengthTool) cornerstoneTools.addTool(cornerstoneTools.LengthTool);
+            if (cornerstoneTools.AngleTool) cornerstoneTools.addTool(cornerstoneTools.AngleTool);
+            if (cornerstoneTools.RectangleRoiTool) cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool);
+            if (cornerstoneTools.EllipticalRoiTool) cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool);
+            if (cornerstoneTools.ArrowAnnotateTool) cornerstoneTools.addTool(cornerstoneTools.ArrowAnnotateTool);
+            
+            console.log('DICOM Viewer: Cornerstone tools initialized successfully');
+          } catch (toolsError) {
+            console.warn('DICOM Viewer: Tools initialization warning:', toolsError);
+            // Continue without tools if initialization fails
+          }
         }
         
         window.cornerstoneToolsInitialized = true;
+        console.log('DICOM Viewer: Global initialization completed');
       }
 
       // Enable viewport
@@ -182,7 +203,10 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
   }, [isInitialized, imageUrl]);
 
   const loadImage = async () => {
-    if (!viewportRef.current) return;
+    if (!viewportRef.current) {
+      console.warn('DICOM Viewer: No viewport reference available');
+      return;
+    }
 
     // Check if imageUrl is valid
     if (!imageUrl || typeof imageUrl !== 'string') {
@@ -214,6 +238,13 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
       const image = await cornerstone.loadImage(imageId);
       console.log('DICOM Viewer: Image loaded successfully', image);
       
+      if (!viewportRef.current) {
+        console.warn('DICOM Viewer: Viewport lost during image loading');
+        setError('Viewport lost during loading');
+        setIsLoading(false);
+        return;
+      }
+      
       cornerstone.displayImage(viewportRef.current, image);
       setImageData(image);
       setIsLoading(false);
@@ -224,31 +255,72 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
     } catch (error) {
       console.error('DICOM Viewer: Error loading image:', error);
       
-      // Fallback: try loading as regular image
-      try {
-        console.log('DICOM Viewer: Trying fallback loading as regular image');
-        if (!imageUrl || typeof imageUrl !== 'string') {
-          throw new Error('Invalid imageUrl for fallback loading');
+      // Try different loading strategies as fallbacks
+      const fallbackStrategies = [];
+      
+      if (isDICOM) {
+        // If DICOM failed, try as regular image
+        const regularUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+        fallbackStrategies.push({ type: 'regular', imageId: regularUrl });
+      } else {
+        // If regular image failed, try different URL schemes
+        if (!imageUrl.startsWith('http')) {
+          fallbackStrategies.push({ type: 'absolute', imageId: `${window.location.origin}${imageUrl}` });
         }
-        const fallbackImageId = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
-        const image = await cornerstone.loadImage(fallbackImageId);
-        cornerstone.displayImage(viewportRef.current, image);
-        setImageData(image);
+        // Also try as DICOM if file extension suggests it
+        if (imageUrl.toLowerCase().includes('.dcm') || imageUrl.toLowerCase().includes('.dicom')) {
+          const dicomUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+          fallbackStrategies.push({ type: 'dicom', imageId: `wadouri:${dicomUrl}` });
+        }
+      }
+      
+      // Try fallback strategies
+      let fallbackSuccess = false;
+      for (const strategy of fallbackStrategies) {
+        try {
+          console.log(`DICOM Viewer: Trying fallback loading as ${strategy.type} with imageId:`, strategy.imageId);
+          if (!viewportRef.current) {
+            console.warn('DICOM Viewer: Viewport lost during fallback loading');
+            break;
+          }
+          const image = await cornerstone.loadImage(strategy.imageId);
+          cornerstone.displayImage(viewportRef.current, image);
+          setImageData(image);
+          setIsLoading(false);
+          setupTools();
+          console.log(`DICOM Viewer: Fallback loading successful with ${strategy.type}`);
+          fallbackSuccess = true;
+          break;
+        } catch (fallbackError) {
+          console.warn(`DICOM Viewer: Fallback ${strategy.type} failed:`, fallbackError);
+        }
+      }
+      
+      if (!fallbackSuccess) {
+        console.error('DICOM Viewer: All loading strategies failed');
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const userFriendlyMessage = errorMessage.includes('404') 
+          ? 'Image file not found' 
+          : errorMessage.includes('CORS') 
+          ? 'Image access blocked by security policy'
+          : `Failed to load image: ${errorMessage}`;
+        setError(userFriendlyMessage);
         setIsLoading(false);
-        setupTools();
-        console.log('DICOM Viewer: Fallback loading successful');
-      } catch (fallbackError) {
-        console.error('DICOM Viewer: Fallback error:', fallbackError);
-        const errorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-        setError(`Failed to load image: ${errorMessage || 'Unknown error'}`);
-        setIsLoading(false);
-        console.error('DICOM Viewer: Complete failure to load image');
       }
     }
   };
 
   const setupTools = () => {
-    if (!viewportRef.current) return;
+    if (!viewportRef.current) {
+      console.warn('DICOM Viewer: No viewport available for tools setup');
+      return;
+    }
+
+    // Check if cornerstoneTools is available before trying to use it
+    if (!cornerstoneTools || !cornerstoneTools.setToolActive) {
+      console.warn('DICOM Viewer: Cornerstone tools not available, skipping tools setup');
+      return;
+    }
 
     const element = viewportRef.current;
 
@@ -260,28 +332,40 @@ export function DICOMViewer({ imageUrl, patientInfo, onClose, isDICOM = false }:
       
       // Update active tool state
       setActiveTool('Wwwc');
+      console.log('DICOM Viewer: Tools setup completed successfully');
     } catch (error) {
       console.warn('DICOM Viewer: Error setting up tools:', error);
+      // Continue without tools if setup fails
     }
   };
 
   const activateTool = (toolName: string) => {
-    if (!viewportRef.current) return;
+    if (!viewportRef.current) {
+      console.warn('DICOM Viewer: No viewport available for tool activation');
+      return;
+    }
+
+    // Check if cornerstoneTools is available
+    if (!cornerstoneTools || !cornerstoneTools.setToolActive) {
+      console.warn('DICOM Viewer: Cornerstone tools not available, skipping tool activation');
+      return;
+    }
 
     try {
       // Deactivate all tools first
-      cornerstoneTools.setToolPassive('Wwwc');
-      cornerstoneTools.setToolPassive('Pan');
-      cornerstoneTools.setToolPassive('Zoom');
-      cornerstoneTools.setToolPassive('Length');
-      cornerstoneTools.setToolPassive('Angle');
-      cornerstoneTools.setToolPassive('RectangleRoi');
-      cornerstoneTools.setToolPassive('EllipticalRoi');
-      cornerstoneTools.setToolPassive('ArrowAnnotate');
+      const toolsToDeactivate = ['Wwwc', 'Pan', 'Zoom', 'Length', 'Angle', 'RectangleRoi', 'EllipticalRoi', 'ArrowAnnotate'];
+      toolsToDeactivate.forEach(tool => {
+        try {
+          cornerstoneTools.setToolPassive(tool);
+        } catch (toolError) {
+          // Ignore individual tool errors - tool might not be available
+        }
+      });
 
       // Activate selected tool
       cornerstoneTools.setToolActive(toolName, { mouseButtonMask: 1 });
       setActiveTool(toolName);
+      console.log('DICOM Viewer: Tool activated:', toolName);
     } catch (error) {
       console.warn('DICOM Viewer: Error activating tool:', error);
     }
