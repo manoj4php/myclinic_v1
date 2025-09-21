@@ -358,18 +358,23 @@ export default function PatientManagement() {
                       data-testid="checkbox-select-all"
                     />
                   </TableHead>
-                  <TableHead className="font-semibold text-blue-900">Actions</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Status</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Patient ID</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Action</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Emergency</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Report Status</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Patient Id</TableHead>
                   <TableHead className="font-semibold text-blue-900">Patient Name</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Age/Sex</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Contact</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Doctor</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Age</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Sex</TableHead>
                   <TableHead className="font-semibold text-blue-900">Study Date</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Specialty</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Chief Complaint</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Files</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Last Updated</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Study Time</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Accession</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Study Desc</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Modality</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Images</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Center</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Ref by</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Is Printed</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Reported by</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -436,7 +441,25 @@ export default function PatientManagement() {
                       </TableCell>
 
                       <TableCell>
-                        {getStatusBadge(patient)}
+                        {patient.emergency ? (
+                          <Badge className="bg-red-100 text-red-800 border-red-200">
+                            Emergency
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-500 text-sm">Normal</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge 
+                          className={`${
+                            patient.reportStatus === 'completed' ? 'bg-green-100 text-green-800 border-green-200' :
+                            patient.reportStatus === 'reviewed' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                            'bg-yellow-100 text-yellow-800 border-yellow-200'
+                          } capitalize`}
+                        >
+                          {patient.reportStatus || 'pending'}
+                        </Badge>
                       </TableCell>
 
                       <TableCell className="font-mono text-sm text-blue-600">
@@ -450,59 +473,47 @@ export default function PatientManagement() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="text-sm">
-                          <div className="font-medium">{getAge(patient.dateOfBirth)}Y</div>
-                          <div className="text-gray-500 capitalize">{patient.gender}</div>
-                        </div>
+                        <div className="text-sm font-medium">{getAge(patient.dateOfBirth)}Y</div>
                       </TableCell>
 
                       <TableCell>
-                        <div className="text-sm space-y-1">
-                          <div className="flex items-center space-x-1">
-                            <Phone className="w-3 h-3 text-gray-400" />
-                            <span className="text-gray-600">{patient.phone}</span>
-                          </div>
-                          {patient.email && (
-                            <div className="flex items-center space-x-1">
-                              <Mail className="w-3 h-3 text-gray-400" />
-                              <span className="text-gray-600 truncate max-w-32">{patient.email}</span>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="text-sm text-gray-600">
-                          {patient.doctorId ? 'Dr. Assigned' : 'Not Assigned'}
-                        </div>
+                        <div className="text-sm text-gray-600 capitalize">{patient.gender}</div>
                       </TableCell>
 
                       <TableCell>
                         <div className="text-sm">
                           <div className="font-medium">{new Date(patient.createdAt).toLocaleDateString()}</div>
-                          <div className="text-gray-500">{new Date(patient.createdAt).toLocaleTimeString()}</div>
                         </div>
                       </TableCell>
 
                       <TableCell>
-                        <Badge 
-                          className={`${getSpecialtyColor(patient.specialty)} capitalize border`}
-                          data-testid={`badge-specialty-${patient.id}`}
-                        >
-                          {patient.specialty}
-                        </Badge>
+                        <div className="text-sm text-gray-600">
+                          {patient.studyTime || 'Not set'}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm font-mono text-gray-600">
+                          {patient.accession || 'Not assigned'}
+                        </div>
                       </TableCell>
 
                       <TableCell>
                         <div className="text-sm text-gray-600 max-w-48 truncate">
-                          {patient.chiefComplaint || 'Not specified'}
+                          {patient.studyDesc || 'Not specified'}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {patient.modality || 'Not specified'}
                         </div>
                       </TableCell>
 
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <div className="text-sm font-medium text-blue-600">
-                            {patient.fileCount}
+                            {patient.fileCount || 0}
                           </div>
                           {patient.fileCount > 0 && (
                             <Button
@@ -531,15 +542,37 @@ export default function PatientManagement() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="text-sm text-gray-500">
-                          {new Date(patient.updatedAt).toLocaleDateString()}
+                        <div className="text-sm text-gray-600">
+                          {patient.center || 'Not specified'}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {patient.refBy || 'Not specified'}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        {patient.isPrinted ? (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            Printed
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-500 text-sm">Not printed</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {patient.reportedBy ? 'Dr. Reported' : 'Not reported'}
                         </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-12">
+                    <TableCell colSpan={18} className="text-center py-12">
                       <div className="flex flex-col items-center space-y-3 text-gray-500">
                         <FileText className="w-12 h-12" />
                         <div className="text-lg font-medium">No patients found</div>

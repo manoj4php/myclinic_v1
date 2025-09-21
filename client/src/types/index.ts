@@ -30,6 +30,17 @@ export interface Patient {
   chiefComplaint: string | null;
   medicalHistory: string | null;
   doctorId: string | null;
+  // New fields for updated requirements
+  emergency: boolean | null;
+  reportStatus: string | null;
+  studyTime: string | null;
+  accession: string | null;
+  studyDesc: string | null;
+  modality: string | null;
+  center: string | null;
+  refBy: string | null;
+  isPrinted: boolean | null;
+  reportedBy: string | null;
   isActive: boolean | null;
   createdAt: string;
   updatedAt: string;
