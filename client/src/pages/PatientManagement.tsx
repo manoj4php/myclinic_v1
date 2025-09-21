@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { EditPatientModal } from "@/components/EditPatientModal";
 
 export default function PatientManagement() {
   const [, setLocation] = useLocation();
@@ -363,6 +364,7 @@ export default function PatientManagement() {
                   <TableHead className="font-semibold text-blue-900">Patient Name</TableHead>
                   <TableHead className="font-semibold text-blue-900">Age/Sex</TableHead>
                   <TableHead className="font-semibold text-blue-900">Contact</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Doctor</TableHead>
                   <TableHead className="font-semibold text-blue-900">Study Date</TableHead>
                   <TableHead className="font-semibold text-blue-900">Specialty</TableHead>
                   <TableHead className="font-semibold text-blue-900">Chief Complaint</TableHead>
@@ -405,14 +407,18 @@ export default function PatientManagement() {
                           >
                             <Eye className="w-4 h-4 text-blue-600" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => e.stopPropagation()}
-                            data-testid={`button-edit-${patient.id}`}
-                          >
-                            <Edit className="w-4 h-4 text-green-600" />
-                          </Button>
+                          <EditPatientModal
+                            patient={patient}
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                data-testid={`button-edit-${patient.id}`}
+                              >
+                                <Edit className="w-4 h-4 text-green-600" />
+                              </Button>
+                            }
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
@@ -462,6 +468,12 @@ export default function PatientManagement() {
                               <span className="text-gray-600 truncate max-w-32">{patient.email}</span>
                             </div>
                           )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {patient.doctorId ? 'Dr. Assigned' : 'Not Assigned'}
                         </div>
                       </TableCell>
 
@@ -527,7 +539,7 @@ export default function PatientManagement() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-12">
+                    <TableCell colSpan={13} className="text-center py-12">
                       <div className="flex flex-col items-center space-y-3 text-gray-500">
                         <FileText className="w-12 h-12" />
                         <div className="text-lg font-medium">No patients found</div>

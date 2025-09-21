@@ -97,7 +97,10 @@ export default function PatientDetails() {
     const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
     const isDicomByExtension = dicomExtensions.includes(extension);
     const isDicomByName = fileName.toLowerCase().includes('dicom');
-    return isDicomByExtension || isDicomByName;
+    // Also check for common DICOM file patterns (e.g., MRBRAIN files)
+    const isDicomByPattern = /\.(dcm|dicom|dic)$/i.test(fileName) || 
+                            /^(MR|CT|US|XR|RF|DX|CR|SC)[A-Z0-9_]+/i.test(fileName);
+    return isDicomByExtension || isDicomByName || isDicomByPattern;
   };
 
   const isRadiologyImage = (fileName: string) => {

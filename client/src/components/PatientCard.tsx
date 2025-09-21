@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { EditPatientModal } from "@/components/EditPatientModal";
 
 interface PatientCardProps {
   patient: {
@@ -87,11 +88,6 @@ export default function PatientCard({ patient }: PatientCardProps) {
     console.log("View patient:", patient.id);
   };
 
-  const handleEditPatient = () => {
-    // This would open edit patient modal
-    console.log("Edit patient:", patient.id);
-  };
-
   const handleDeletePatient = () => {
     if (window.confirm(`Are you sure you want to delete ${patient.name}?`)) {
       deletePatientMutation.mutate();
@@ -139,14 +135,18 @@ export default function PatientCard({ patient }: PatientCardProps) {
             >
               <i className="fas fa-eye"></i>
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleEditPatient}
-              data-testid={`button-edit-patient-${patient.id}`}
-            >
-              <i className="fas fa-edit"></i>
-            </Button>
+            <EditPatientModal
+              patient={patient}
+              trigger={
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  data-testid={`button-edit-patient-${patient.id}`}
+                >
+                  <i className="fas fa-edit"></i>
+                </Button>
+              }
+            />
             <Button 
               variant="ghost" 
               size="sm"
