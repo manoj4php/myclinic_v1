@@ -65,6 +65,17 @@ export const patients = pgTable("patients", {
   chiefComplaint: text("chief_complaint"),
   medicalHistory: text("medical_history"),
   doctorId: varchar("doctor_id").references(() => users.id),
+  // New fields for the updated requirements
+  emergency: boolean("emergency").default(false),
+  reportStatus: varchar("report_status").default("pending"), // pending, completed, reviewed
+  studyTime: varchar("study_time"), // time portion of study
+  accession: varchar("accession"), // accession number
+  studyDesc: text("study_desc"), // study description
+  modality: varchar("modality"), // CT, MRI, X-Ray, etc.
+  center: varchar("center"), // medical center/facility
+  refBy: varchar("ref_by"), // referred by doctor
+  isPrinted: boolean("is_printed").default(false),
+  reportedBy: varchar("reported_by").references(() => users.id), // doctor who reported
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -136,6 +147,10 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const patientsRelations = relations(patients, ({ one, many }) => ({
   doctor: one(users, {
     fields: [patients.doctorId],
+    references: [users.id],
+  }),
+  reportedByUser: one(users, {
+    fields: [patients.reportedBy],
     references: [users.id],
   }),
   files: many(patientFiles),

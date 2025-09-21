@@ -46,6 +46,17 @@ export default function AddPatient() {
       chiefComplaint: "",
       medicalHistory: "",
       doctorId: "",
+      // New fields
+      emergency: false,
+      reportStatus: "pending",
+      studyTime: "",
+      accession: "",
+      studyDesc: "",
+      modality: "",
+      center: "",
+      refBy: "",
+      isPrinted: false,
+      reportedBy: "",
     },
   });
 
@@ -339,6 +350,238 @@ export default function AddPatient() {
                             placeholder="Previous medical conditions, surgeries, medications, allergies"
                             rows={4}
                             data-testid="textarea-medical-history"
+                            {...field}
+                            value={field.value ?? ""} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Study Details Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Study Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="emergency"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Emergency Case</FormLabel>
+                          <div className="text-sm text-muted-foreground">
+                            Mark as emergency if urgent attention required
+                          </div>
+                        </div>
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={(e) => field.onChange(e.target.checked)}
+                            className="w-4 h-4"
+                            data-testid="checkbox-emergency"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reportStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Report Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-report-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="reviewed">Reviewed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="studyTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Study Time</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="time"
+                            data-testid="input-study-time"
+                            {...field}
+                            value={field.value ?? ""} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="accession"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Accession Number</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter accession number"
+                            data-testid="input-accession"
+                            {...field}
+                            value={field.value ?? ""} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="modality"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modality</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-modality">
+                              <SelectValue placeholder="Select modality" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="CT">CT Scan</SelectItem>
+                            <SelectItem value="MRI">MRI</SelectItem>
+                            <SelectItem value="X-Ray">X-Ray</SelectItem>
+                            <SelectItem value="Ultrasound">Ultrasound</SelectItem>
+                            <SelectItem value="PET">PET Scan</SelectItem>
+                            <SelectItem value="Mammography">Mammography</SelectItem>
+                            <SelectItem value="Nuclear">Nuclear Medicine</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="center"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Medical Center</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter medical center/facility name"
+                            data-testid="input-center"
+                            {...field}
+                            value={field.value ?? ""} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="refBy"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Referred By</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter referring doctor's name"
+                            data-testid="input-ref-by"
+                            {...field}
+                            value={field.value ?? ""} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reportedBy"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reported By</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-reported-by">
+                              <SelectValue placeholder="Select reporting doctor" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {doctors?.map((doctor: any) => (
+                              <SelectItem key={doctor.id} value={doctor.id}>
+                                Dr. {doctor.firstName} {doctor.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isPrinted"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Is Printed</FormLabel>
+                          <div className="text-sm text-muted-foreground">
+                            Mark if reports have been printed
+                          </div>
+                        </div>
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={(e) => field.onChange(e.target.checked)}
+                            className="w-4 h-4"
+                            data-testid="checkbox-is-printed"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="mt-6">
+                  <FormField
+                    control={form.control}
+                    name="studyDesc"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Study Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe the study details, findings, or observations"
+                            rows={3}
+                            data-testid="textarea-study-desc"
                             {...field}
                             value={field.value ?? ""} 
                           />
