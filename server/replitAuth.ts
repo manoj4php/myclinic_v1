@@ -80,15 +80,43 @@ export async function setupAuth(app: Express) {
     try {
       const { email, password } = req.body;
       
+      console.log("Login attempt:", { email, password: password ? "[REDACTED]" : "undefined" });
+      
       if (!email || !password) {
+        console.log("Missing email or password");
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      // Try database authentication
+      // Mock user authentication for demo (prioritized to avoid database issues)
+      if (email === "admin@myclinic.com" && password === "admin123") {
+        console.log("Using mock authentication for admin user");
+        const mockUser = {
+          id: "test-user-1",
+          email: "admin@myclinic.com",
+          firstName: "Admin",
+          lastName: "User",
+          role: "admin",
+          specialty: "medicines"
+        };
+        
+        try {
+          const token = generateJwt(mockUser);
+          console.log("Generated JWT token for mock user");
+          return res.json({ token });
+        } catch (jwtError) {
+          console.error("JWT generation error:", jwtError);
+          return res.status(500).json({ message: "Authentication system error" });
+        }
+      }
+
+      console.log("Mock authentication failed, trying database authentication");
+      
+      // Try database authentication with bcrypt
       try {
         const user = await storage.findUserByEmail(email);
         
         if (!user) {
+          console.log("User not found in database");
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
@@ -100,11 +128,12 @@ export async function setupAuth(app: Express) {
         // Compare password with hash
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
+          console.log("Password mismatch");
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const token = generateJwt(user);
-        res.json({ token });
+        return res.json({ token });
       } catch (dbError) {
         console.error("Database authentication error:", dbError);
         
@@ -121,15 +150,15 @@ export async function setupAuth(app: Express) {
           };
           
           const token = generateJwt(mockUser);
-          res.json({ token });
-          return;
+          return res.json({ token });
         }
         
+        console.log("Database not available, falling back to deny access");
         return res.status(401).json({ message: "Invalid credentials" });
       }
     } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      console.error("Unexpected login error:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
 

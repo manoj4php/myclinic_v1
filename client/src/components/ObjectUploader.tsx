@@ -64,24 +64,37 @@ export function ObjectUploader({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
+        allowedFileTypes: ['image/*', '.pdf', '.dcm', '.dicom'], // Add allowed file types
       },
       autoProceed: false,
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
         getUploadParameters: async (file) => {
-          const uploadParams = await onGetUploadParameters(file);
-          // Add authentication header for local uploads
-          const token = localStorage.getItem("jwtToken");
-          return {
-            ...uploadParams,
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          };
+          try {
+            const uploadParams = await onGetUploadParameters(file);
+            const token = localStorage.getItem("jwtToken");
+            
+            console.log("Upload parameters:", uploadParams);
+            
+            return {
+              ...uploadParams,
+              headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                'Content-Type': file.type || 'application/octet-stream',
+              },
+            };
+          } catch (error) {
+            console.error("Error getting upload parameters:", error);
+            throw error;
+          }
         },
       })
+      .on("upload-error", (file, error, response) => {
+        console.error("Upload error:", error, response);
+      })
       .on("complete", (result) => {
+        console.log("Upload complete:", result);
         onComplete?.(result);
       })
   );

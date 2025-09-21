@@ -7,9 +7,24 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+
+// CORS middleware for file uploads and API requests
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 // Increase upload size limits to 100MB
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: false, limit: '100mb' }));
+app.use(express.raw({ limit: '100mb', type: '*/*' })); // Add raw body parser for file uploads
 
 app.use((req, res, next) => {
   const start = Date.now();

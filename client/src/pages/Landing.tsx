@@ -1,5 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import { ClinicLogoText } from "@/components/Logo";
@@ -7,12 +9,51 @@ import { ClinicLogoText } from "@/components/Logo";
 export default function Landing() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
- // debugger;
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
   const handleLogin = async () => {
-    const response = await apiRequest("POST", "/api/login", { email, password });
-    const { token } = await response.json();
-    localStorage.setItem("jwtToken", token);
-    window.location.href = "/";
+    if (!email || !password) {
+      toast({
+        title: "Error",
+        description: "Please enter both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiRequest("POST", "/api/login", { email, password });
+      const { token } = await response.json();
+      
+      if (token) {
+        localStorage.setItem("jwtToken", token);
+        toast({
+          title: "Success",
+          description: "Login successful!",
+        });
+        // Force a page reload to update auth state
+        window.location.href = "/";
+      } else {
+        throw new Error("No token received");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: error.message?.includes('401') ? "Invalid email or password" : "Login failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleLogin();
+    }
   };
 
   return (
@@ -27,30 +68,38 @@ export default function Landing() {
           </div>
           
           <div className="space-y-4">
-            <input
+            <Input
               type="email"
               placeholder="Email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border rounded mb-2"
+              onKeyPress={handleKeyPress}
+              className="w-full"
+              disabled={isLoading}
             />
-            <input
+            <Input
               type="password"
               placeholder="Password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded mb-2"
+              onKeyPress={handleKeyPress}
+              className="w-full"
+              disabled={isLoading}
             />
             <p className="text-center text-sm text-muted-foreground">
               Secure access to your clinic management system
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              Demo: admin@myclinic.com / admin123
             </p>
             
             <Button 
               onClick={handleLogin}
               className="w-full py-3 text-lg"
               data-testid="button-login"
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? "Signing In..." : "Sign In"}
             </Button>
           </div>
           

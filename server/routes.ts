@@ -206,22 +206,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
       
-      // Write the uploaded data to file
-      const chunks: Buffer[] = [];
-      req.on('data', (chunk) => chunks.push(chunk));
-      req.on('end', () => {
-        const buffer = Buffer.concat(chunks);
+      // Handle both raw binary data and form data
+      let buffer: Buffer;
+      
+      if (req.headers['content-type']?.includes('multipart/form-data')) {
+        // Handle form data (if sent this way)
+        const chunks: Buffer[] = [];
+        req.on('data', (chunk) => chunks.push(chunk));
+        req.on('end', () => {
+          buffer = Buffer.concat(chunks);
+          fs.writeFileSync(filePath, buffer);
+          res.json({ 
+            message: "File uploaded successfully", 
+            objectId,
+            uploadURL: `/api/objects/local-upload/${objectId}`
+          });
+        });
+        req.on('error', (error) => {
+          console.error("Upload stream error:", error);
+          res.status(500).json({ message: "Upload failed" });
+        });
+      } else {
+        // Handle raw binary data (Uppy's default method)
+        if (Buffer.isBuffer(req.body)) {
+          buffer = req.body;
+        } else {
+          buffer = Buffer.from(req.body);
+        }
+        
         fs.writeFileSync(filePath, buffer);
+        console.log(`File uploaded successfully: ${objectId}, size: ${buffer.length} bytes`);
+        
         res.json({ 
           message: "File uploaded successfully", 
           objectId,
-          uploadURL: `/api/objects/uploads/${objectId}`
+          uploadURL: `/api/objects/local-upload/${objectId}`,
+          size: buffer.length
         });
-      });
+      }
       
     } catch (error) {
       console.error("Error uploading file:", error);
-      res.status(500).json({ message: "Failed to upload file" });
+      res.status(500).json({ message: "Failed to upload file", error: error.message });
     }
   });
 

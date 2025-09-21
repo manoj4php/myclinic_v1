@@ -59,8 +59,26 @@ export default function Sidebar() {
 
   const unreadNotifications = notifications?.filter((n: Notification) => !n.isRead)?.length || 0;
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      // Clear the JWT token
+      localStorage.removeItem("jwtToken");
+      
+      // Optional: Call logout endpoint to clean up server-side session
+      try {
+        await fetch("/api/logout", { method: "POST" });
+      } catch (error) {
+        // Ignore errors from logout endpoint since token is already cleared
+        console.warn("Logout endpoint error:", error);
+      }
+      
+      // Redirect to login page
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still redirect even if there's an error
+      window.location.href = "/";
+    }
   };
 
   const getDisplayName = () => {
