@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, hashPassword } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { emailService } from "./emailService";
@@ -93,9 +93,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Temporary route to seed database with test user (remove in production)
   app.post('/api/seed-user', async (req, res) => {
     try {
+      // Hash the admin password
+      const hashedPassword = await hashPassword('admin123');
+      
       const testUser = await storage.upsertUser({
         id: 'test-user-1',
         email: 'admin@myclinic.com',
+        password: hashedPassword,
         firstName: 'Admin',
         lastName: 'User',
         username: 'admin',
@@ -104,7 +108,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         emailNotifications: true,
       });
-      res.json({ message: 'Test user created', user: testUser });
+      
+      console.log('[DEV] Test user created with password: admin123');
+      res.json({ message: 'Test user created', user: { ...testUser, password: undefined } });
     } catch (error) {
       console.error("Error creating test user:", error);
       res.status(500).json({ message: "Failed to create test user" });
@@ -323,8 +329,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate temporary password for new users
       const tempPassword = generateTemporaryPassword();
       
+      // Hash the temporary password before storing
+      const hashedPassword = await hashPassword(tempPassword);
+      
       const user = await storage.createUser({
         ...userData,
+        password: hashedPassword,
         createdBy,
         updatedBy: createdBy,
         ipAddress,
@@ -349,8 +359,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // In development environment, log the temporary password to console
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DEV] Temporary password for ${userData.email || userData.username}: ${tempPassword}`);
+      }
+
       res.status(201).json({
         ...user,
+        password: undefined, // Don't return password in response
         message: userData.email 
           ? "User created successfully. Temporary password sent to email."
           : "User created successfully."
@@ -410,8 +426,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "New password must be at least 8 characters long" });
       }
 
-      // For now, just return success since we don't have password hashing implemented
-      // In a real app, you would verify currentPassword and hash newPassword
+      // Get the user whose password is being changed
+      const targetUser = await storage.getUser(id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // If not an admin changing someone else's password, verify current password
+      if (id === userId) {
+        if (!currentPassword) {
+          return res.status(400).json({ message: "Current password is required" });
+        }
+        
+        if (!targetUser.password) {
+          return res.status(400).json({ message: "User password not properly configured" });
+        }
+
+        const bcrypt = await import("bcryptjs");
+        const isValidPassword = await bcrypt.compare(currentPassword, targetUser.password);
+        if (!isValidPassword) {
+          return res.status(400).json({ message: "Current password is incorrect" });
+        }
+      }
+
+      // Hash the new password
+      const hashedNewPassword = await hashPassword(newPassword);
+      
+      // Update the user's password
+      await storage.updateUser(id, {
+        password: hashedNewPassword,
+        updatedBy: userId,
+        ipAddress: req.ip,
+      });
+
       res.json({ message: "Password changed successfully" });
     } catch (error) {
       console.error("Error changing password:", error);

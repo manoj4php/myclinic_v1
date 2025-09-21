@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import type { Express, RequestHandler, Request, Response } from "express";
 import { storage } from "./storage";
 import dotenv from "dotenv";
@@ -19,6 +20,14 @@ const ISSUER = process.env.JWT_ISSUER || "https://myclinic.local";
 // Validate JWT configuration
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   console.error('Warning: JWT_SECRET not set in production environment!');
+}
+
+/**
+ * Hash a password using bcrypt
+ */
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
 }
 
 /**
@@ -75,23 +84,7 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      // Mock user authentication for demo (remove in production)
-      if (email === "admin@myclinic.com" && password === "admin123") {
-        const mockUser = {
-          id: "test-user-1",
-          email: "admin@myclinic.com",
-          firstName: "Admin",
-          lastName: "User",
-          role: "admin",
-          specialty: "medicines"
-        };
-        
-        const token = generateJwt(mockUser);
-        res.json({ token });
-        return;
-      }
-
-      // Try database authentication if available
+      // Try database authentication
       try {
         const user = await storage.findUserByEmail(email);
         
@@ -99,15 +92,39 @@ export async function setupAuth(app: Express) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
-        // Note: In production, you should hash passwords and compare hashes
-        if (password !== "admin123") { // Simple check for demo
+        // Check if user has a password set
+        if (!user.password) {
+          return res.status(401).json({ message: "Account not properly configured. Please contact administrator." });
+        }
+
+        // Compare password with hash
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const token = generateJwt(user);
         res.json({ token });
       } catch (dbError) {
-        console.warn("Database not available, using mock authentication");
+        console.error("Database authentication error:", dbError);
+        
+        // Fallback to mock authentication for development only
+        if (process.env.NODE_ENV === 'development' && email === "admin@myclinic.com" && password === "admin123") {
+          console.warn("Using mock authentication - this should only happen in development");
+          const mockUser = {
+            id: "test-user-1",
+            email: "admin@myclinic.com",
+            firstName: "Admin",
+            lastName: "User",
+            role: "admin",
+            specialty: "medicines"
+          };
+          
+          const token = generateJwt(mockUser);
+          res.json({ token });
+          return;
+        }
+        
         return res.status(401).json({ message: "Invalid credentials" });
       }
     } catch (error) {

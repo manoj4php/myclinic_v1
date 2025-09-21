@@ -14,6 +14,7 @@ import Analytics from "@/pages/Analytics";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import Notifications from "@/pages/Notifications";
+import ChangePassword from "@/pages/ChangePassword";
 import NotFound from "@/pages/not-found";
 import Sidebar, { SidebarProvider, useSidebar } from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -21,6 +22,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 
 function AuthenticatedLayout() {
   const { isCollapsed } = useSidebar();
+  const { user } = useAuth();
   
   return (
     <div className="min-h-screen bg-background">
@@ -37,6 +39,7 @@ function AuthenticatedLayout() {
           <Route path="/reports" component={Reports} />
           <Route path="/settings" component={Settings} />
           <Route path="/notifications" component={Notifications} />
+          <Route path="/change-password" component={() => <ChangePassword userId={user?.id} />} />
           <Route component={NotFound} />
         </Switch>
       </div>

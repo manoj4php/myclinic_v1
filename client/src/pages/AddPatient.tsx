@@ -274,7 +274,7 @@ export default function AddPatient() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No Doctor Assigned</SelectItem>
+                            <SelectItem value="none">No Doctor Assigned</SelectItem>
                             {doctors?.map((doctor: any) => (
                               <SelectItem key={doctor.id} value={doctor.id}>
                                 {doctor.firstName && doctor.lastName 
