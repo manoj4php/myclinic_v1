@@ -1,0 +1,23 @@
+PATIENT EDIT FORM TEMPLATE
+
+[This is a placeholder for a Word document template]
+
+Patient Information:
+- Name: ________________
+- Date of Birth: ________________
+- Gender: ________________
+- Phone: ________________
+- Email: ________________
+- Address: ________________
+- Specialty: ________________
+- Chief Complaint: ________________
+- Medical History: ________________
+- Assigned Doctor: ________________
+
+Instructions:
+1. Fill out the patient information fields
+2. Review and update medical history
+3. Save changes and submit
+4. Ensure all required fields are completed
+
+This document can be downloaded and filled out offline, then uploaded back to the system.

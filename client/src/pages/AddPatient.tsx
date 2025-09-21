@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,12 @@ export default function AddPatient() {
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
+  // Fetch doctors for the dropdown
+  const { data: doctors } = useQuery({
+    queryKey: ["/api/users"],
+    select: (data) => Array.isArray(data) ? data.filter((user: any) => user.role !== 'super_admin') : [],
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -39,6 +45,7 @@ export default function AddPatient() {
       specialty: undefined,
       chiefComplaint: "",
       medicalHistory: "",
+      doctorId: "",
     },
   });
 
@@ -236,6 +243,34 @@ export default function AddPatient() {
                             <SelectItem value="gynac">Gynecology</SelectItem>
                             <SelectItem value="medicines">General Medicine</SelectItem>
                             <SelectItem value="surgeon">Surgery</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="doctorId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assigned Doctor</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-patient-doctor">
+                              <SelectValue placeholder="Select Doctor" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">No Doctor Assigned</SelectItem>
+                            {doctors?.map((doctor: any) => (
+                              <SelectItem key={doctor.id} value={doctor.id}>
+                                {doctor.firstName && doctor.lastName 
+                                  ? `Dr. ${doctor.firstName} ${doctor.lastName}` 
+                                  : doctor.username || doctor.email}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
