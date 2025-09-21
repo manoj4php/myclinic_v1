@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,12 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { User } from "@/types";
 
 export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const form = useForm({
     defaultValues: {
@@ -30,23 +33,42 @@ export default function Settings() {
     },
   });
 
-  const handleSaveProfile = async (data: any) => {
-    setIsLoading(true);
-    try {
-      // API call to update profile
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!user?.id) {
+        throw new Error("User ID not found");
+      }
+      
+      // Only include fields that can be updated (exclude email and password)
+      const updateData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        emailNotifications: data.emailNotifications,
+      };
+      
+      const response = await apiRequest("PUT", `/api/users/${user.id}`, updateData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Success",
         description: "Profile updated successfully!",
       });
-    } catch (error) {
+    },
+    onError: (error) => {
+      console.error("Error updating profile:", error);
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const handleSaveProfile = async (data: any) => {
+    updateProfileMutation.mutate(data);
   };
 
   const handleSaveNotifications = async (data: any) => {
@@ -168,22 +190,8 @@ export default function Settings() {
                     />
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                      <i className="fas fa-user text-2xl text-primary-foreground"></i>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Profile Picture</p>
-                      <p className="text-xs text-muted-foreground">Upload a new avatar</p>
-                      <Button variant="outline" size="sm" className="mt-2">
-                        <i className="fas fa-upload mr-2"></i>
-                        Change Avatar
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button type="submit" disabled={isLoading} data-testid="button-save-profile">
-                    {isLoading ? (
+                  <Button type="submit" disabled={updateProfileMutation.isPending} data-testid="button-save-profile">
+                    {updateProfileMutation.isPending ? (
                       <>
                         <i className="fas fa-spinner fa-spin mr-2"></i>
                         Saving...
@@ -413,6 +421,21 @@ export default function Settings() {
                   <Button variant="outline">
                     <i className="fas fa-history mr-2"></i>
                     View Activity Log
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Session Management</p>
+                  <p className="text-xs text-muted-foreground mb-4">End your current session and log out</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.href = "/api/logout"}
+                    data-testid="button-logout-settings"
+                  >
+                    <i className="fas fa-sign-out-alt mr-2"></i>
+                    Logout
                   </Button>
                 </div>
 

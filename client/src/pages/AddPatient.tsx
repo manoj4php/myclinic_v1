@@ -383,7 +383,7 @@ export default function AddPatient() {
                         <FormControl>
                           <input
                             type="checkbox"
-                            checked={field.value}
+                            checked={field.value ?? false}
                             onChange={(e) => field.onChange(e.target.checked)}
                             className="w-4 h-4"
                             data-testid="checkbox-emergency"
@@ -399,7 +399,7 @@ export default function AddPatient() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Report Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-report-status">
                               <SelectValue placeholder="Select status" />
@@ -460,7 +460,7 @@ export default function AddPatient() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Modality</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-modality">
                               <SelectValue placeholder="Select modality" />
@@ -526,7 +526,7 @@ export default function AddPatient() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Reported By</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-reported-by">
                               <SelectValue placeholder="Select reporting doctor" />
@@ -559,7 +559,7 @@ export default function AddPatient() {
                         <FormControl>
                           <input
                             type="checkbox"
-                            checked={field.value}
+                            checked={field.value ?? false}
                             onChange={(e) => field.onChange(e.target.checked)}
                             className="w-4 h-4"
                             data-testid="checkbox-is-printed"
