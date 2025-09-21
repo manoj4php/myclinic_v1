@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Updated Patient Management Table Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8f9fa; padding: 20px; }
+        .container { max-width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .header h1 { color: #1e40af; font-size: 24px; margin-bottom: 8px; }
+        .header p { color: #6b7280; }
+        table { width: 100%; border-collapse: collapse; min-width: 1800px; }
+        th { background-color: #eff6ff; color: #1e40af; font-weight: 600; padding: 12px 8px; text-align: left; border-bottom: 1px solid #bfdbfe; font-size: 13px; }
+        td { padding: 12px 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+        tr:hover { background-color: #f9fafb; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge-emergency { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+        .badge-pending { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+        .badge-completed { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+        .badge-printed { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+        .patient-id { font-family: monospace; color: #1e40af; }
+        .actions { display: flex; gap: 4px; }
+        .btn { padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-view { background: #eff6ff; color: #2563eb; }
+        .btn-edit { background: #f0fdf4; color: #16a34a; }
+        .btn-delete { background: #fef2f2; color: #dc2626; }
+        .comparison { margin-bottom: 20px; padding: 15px; background: #f0f9ff; border-left: 4px solid #0ea5e9; }
+        .comparison h3 { color: #0c4a6e; margin-bottom: 10px; }
+        .field-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .old-fields { background: #fef2f2; padding: 10px; border-radius: 4px; }
+        .new-fields { background: #f0fdf4; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Updated Patient Study Worklist</h1>
+            <p>Enhanced table with new fields as per requirements</p>
+        </div>
+
+        <div class="comparison">
+            <h3>📊 Changes Summary</h3>
+            <div class="field-list">
+                <div class="old-fields">
+                    <strong>Old Headers (12 columns):</strong><br>
+                    Actions, Status, Patient ID, Patient Name, Age/Sex, Contact, Doctor, Study Date, Specialty, Chief Complaint, Files, Last Updated
+                </div>
+                <div class="new-fields">
+                    <strong>New Headers (17 columns):</strong><br>
+                    Action, Emergency, Report Status, Patient Id, Patient Name, Age, Sex, Study Date, Study Time, Accession, Study Desc, Modality, Images, Center, Ref by, Is Printed, Reported by
+                </div>
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">☑️</th>
+                    <th style="width: 100px;">Action</th>
+                    <th style="width: 100px;">Emergency</th>
+                    <th style="width: 120px;">Report Status</th>
+                    <th style="width: 100px;">Patient Id</th>
+                    <th style="width: 150px;">Patient Name</th>
+                    <th style="width: 60px;">Age</th>
+                    <th style="width: 80px;">Sex</th>
+                    <th style="width: 100px;">Study Date</th>
+                    <th style="width: 100px;">Study Time</th>
+                    <th style="width: 120px;">Accession</th>
+                    <th style="width: 150px;">Study Desc</th>
+                    <th style="width: 100px;">Modality</th>
+                    <th style="width: 80px;">Images</th>
+                    <th style="width: 120px;">Center</th>
+                    <th style="width: 120px;">Ref by</th>
+                    <th style="width: 100px;">Is Printed</th>
+                    <th style="width: 120px;">Reported by</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="checkbox"></td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn btn-view">👁️</button>
+                            <button class="btn btn-edit">✏️</button>
+                            <button class="btn btn-delete">🗑️</button>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-emergency">Emergency</span></td>
+                    <td><span class="badge badge-pending">Pending</span></td>
+                    <td><span class="patient-id">A1B2C3D4</span></td>
+                    <td><strong>John Smith</strong></td>
+                    <td>45Y</td>
+                    <td>Male</td>
+                    <td>2024/01/15</td>
+                    <td>14:30</td>
+                    <td>ACC001234</td>
+                    <td>Chest CT with contrast</td>
+                    <td>CT</td>
+                    <td>15</td>
+                    <td>City Medical Center</td>
+                    <td>Dr. Johnson</td>
+                    <td><span class="badge badge-printed">Printed</span></td>
+                    <td>Dr. Roberts</td>
+                </tr>
+                <tr>
+                    <td><input type="checkbox"></td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn btn-view">👁️</button>
+                            <button class="btn btn-edit">✏️</button>
+                            <button class="btn btn-delete">🗑️</button>
+                        </div>
+                    </td>
+                    <td><span style="color: #6b7280; font-size: 12px;">Normal</span></td>
+                    <td><span class="badge badge-completed">Completed</span></td>
+                    <td><span class="patient-id">E5F6G7H8</span></td>
+                    <td><strong>Sarah Davis</strong></td>
+                    <td>32Y</td>
+                    <td>Female</td>
+                    <td>2024/01/14</td>
+                    <td>09:15</td>
+                    <td>ACC001235</td>
+                    <td>MRI Brain without contrast</td>
+                    <td>MRI</td>
+                    <td>28</td>
+                    <td>Regional Hospital</td>
+                    <td>Dr. Wilson</td>
+                    <td><span style="color: #6b7280; font-size: 12px;">Not printed</span></td>
+                    <td>Dr. Thompson</td>
+                </tr>
+                <tr>
+                    <td><input type="checkbox"></td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn btn-view">👁️</button>
+                            <button class="btn btn-edit">✏️</button>
+                            <button class="btn btn-delete">🗑️</button>
+                        </div>
+                    </td>
+                    <td><span style="color: #6b7280; font-size: 12px;">Normal</span></td>
+                    <td><span class="badge badge-pending">Pending</span></td>
+                    <td><span class="patient-id">I9J0K1L2</span></td>
+                    <td><strong>Michael Johnson</strong></td>
+                    <td>58Y</td>
+                    <td>Male</td>
+                    <td>2024/01/13</td>
+                    <td>11:45</td>
+                    <td>ACC001236</td>
+                    <td>Abdominal Ultrasound</td>
+                    <td>Ultrasound</td>
+                    <td>12</td>
+                    <td>Downtown Clinic</td>
+                    <td>Dr. Lee</td>
+                    <td><span style="color: #6b7280; font-size: 12px;">Not printed</span></td>
+                    <td><span style="color: #6b7280; font-size: 12px;">Not reported</span></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="padding: 20px; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb;">
+            <strong>✅ Implementation Complete:</strong> All 17 required table headers have been implemented with proper data display and styling.
+        </div>
+    </div>
+</body>
+</html>
