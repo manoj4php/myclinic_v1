@@ -35,14 +35,18 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { EditPatientModal } from "@/components/EditPatientModal";
+import { DICOMViewer } from "@/components/DICOMViewer";
 
 export default function PatientManagement() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedModality, setSelectedModality] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [showDICOMViewer, setShowDICOMViewer] = useState(false);
+  const [selectedPatientForDICOM, setSelectedPatientForDICOM] = useState<any>(null);
   const { toast } = useToast();
 
   // Delete patient mutation
@@ -111,6 +115,66 @@ export default function PatientManagement() {
     };
   }) : [];
 
+  // DICOM file detection and handling functions
+  const isDICOMFile = (fileName: string) => {
+    const dicomExtensions = ['.dcm', '.dicom', '.dic'];
+    const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    const isDicomByExtension = dicomExtensions.includes(extension);
+    const isDicomByName = fileName.toLowerCase().includes('dicom');
+    // Also check for common DICOM file patterns (e.g., MRBRAIN files)
+    const isDicomByPattern = /\.(dcm|dicom|dic)$/i.test(fileName) || 
+                            /^(MR|CT|US|XR|RF|DX|CR|SC)[A-Z0-9_]+/i.test(fileName);
+    return isDicomByExtension || isDicomByName || isDicomByPattern;
+  };
+
+  const getFileUrl = (file: any) => {
+    if (!file.filePath) {
+      return '';
+    }
+    
+    // If filePath is already a full URL, use it as is
+    if (file.filePath.startsWith('http')) {
+      return file.filePath;
+    }
+    
+    // If filePath starts with /api/, use it as is (for backward compatibility)
+    if (file.filePath.startsWith('/api/')) {
+      return `${window.location.origin}${file.filePath}`;
+    }
+    
+    // For new storage system, construct the URL
+    return `${window.location.origin}/api/files/${file.filePath}`;
+  };
+
+  const getDICOMFilesForPatient = (patient: any) => {
+    if (!patient.files || !Array.isArray(patient.files)) return [];
+    
+    return patient.files
+      .filter((file: any) => isDICOMFile(file.fileName))
+      .map((file: any) => getFileUrl(file));
+  };
+
+  const openDICOMViewer = (patient: any) => {
+    const dicomFiles = getDICOMFilesForPatient(patient);
+    
+    if (dicomFiles.length === 0) {
+      toast({
+        title: "No DICOM Files",
+        description: "This patient has no DICOM files to view.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSelectedPatientForDICOM(patient);
+    setShowDICOMViewer(true);
+  };
+
+  const closeDICOMViewer = () => {
+    setShowDICOMViewer(false);
+    setSelectedPatientForDICOM(null);
+  };
+
   const filteredPatients = patientsWithFiles?.filter((patient: any) => {
     // Search filter
     if (searchQuery) {
@@ -131,6 +195,11 @@ export default function PatientManagement() {
     if (selectedStatus && selectedStatus !== "all") {
       const isActive = selectedStatus === "active";
       if (patient.isActive !== isActive) return false;
+    }
+
+    // Modality filter
+    if (selectedModality && selectedModality !== "all") {
+      if (patient.modality !== selectedModality) return false;
     }
     
     // Date filter
@@ -260,7 +329,7 @@ export default function PatientManagement() {
       {/* Advanced Filter Section */}
       <Card className="mb-6 border-blue-100 shadow-sm">
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -298,6 +367,23 @@ export default function PatientManagement() {
               </SelectContent>
             </Select>
 
+            <Select value={selectedModality} onValueChange={setSelectedModality}>
+              <SelectTrigger data-testid="select-modality">
+                <SelectValue placeholder="All Modalities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modalities</SelectItem>
+                <SelectItem value="CT">CT Scan</SelectItem>
+                <SelectItem value="MRI">MRI</SelectItem>
+                <SelectItem value="X-RAY">X-Ray</SelectItem>
+                <SelectItem value="ULTRASOUND">Ultrasound</SelectItem>
+                <SelectItem value="MAMMOGRAPHY">Mammography</SelectItem>
+                <SelectItem value="NUCLEAR">Nuclear Medicine</SelectItem>
+                <SelectItem value="PET">PET Scan</SelectItem>
+                <SelectItem value="FLUOROSCOPY">Fluoroscopy</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Input
               type="date"
               value={selectedDate}
@@ -312,6 +398,7 @@ export default function PatientManagement() {
                 setSearchQuery("");
                 setSelectedSpecialty("all");
                 setSelectedStatus("all");
+                setSelectedModality("all");
                 setSelectedDate("");
               }}
             >
@@ -409,9 +496,27 @@ export default function PatientManagement() {
                               setLocation(`/patients/${patient.id}`);
                             }}
                             data-testid={`button-view-${patient.id}`}
+                            title="View Patient Details"
                           >
                             <Eye className="w-4 h-4 text-blue-600" />
                           </Button>
+                          
+                          {/* DICOM Viewer Button - only show if patient has DICOM files */}
+                          {getDICOMFilesForPatient(patient).length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDICOMViewer(patient);
+                              }}
+                              data-testid={`button-dicom-${patient.id}`}
+                              title={`View DICOM Files (${getDICOMFilesForPatient(patient).length})`}
+                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                            >
+                              <MonitorPlay className="w-4 h-4" />
+                            </Button>
+                          )}
                           <EditPatientModal
                             patient={patient}
                             trigger={
@@ -525,6 +630,7 @@ export default function PatientManagement() {
                               }}
                               className={patient.specialty === 'radiology' ? 'bg-blue-50 hover:bg-blue-100' : ''}
                               data-testid={`button-files-${patient.id}`}
+                              title="View all files"
                             >
                               {patient.specialty === 'radiology' ? (
                                 <MonitorPlay className="w-4 h-4 text-blue-600" />
@@ -533,6 +639,20 @@ export default function PatientManagement() {
                               )}
                             </Button>
                           )}
+                          
+                          {/* Show DICOM file count if any */}
+                          {(() => {
+                            const dicomCount = getDICOMFilesForPatient(patient).length;
+                            if (dicomCount > 0) {
+                              return (
+                                <Badge className="bg-purple-100 text-purple-800 text-xs px-2 py-0.5">
+                                  {dicomCount} DICOM
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
+                          
                           {patient.specialty === 'radiology' && patient.fileCount > 0 && (
                             <Badge className="bg-green-100 text-green-800 text-xs px-1 py-0">
                               Medical
@@ -608,6 +728,40 @@ export default function PatientManagement() {
           <RefreshCw className="w-4 h-4" />
         </div>
       </div>
+
+      {/* DICOM Viewer Modal */}
+      {showDICOMViewer && selectedPatientForDICOM && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg max-w-7xl max-h-full w-full h-full m-4 flex flex-col">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b">
+              <h3 className="text-lg font-semibold" data-testid="dicom-viewer-title">
+                DICOM Viewer: {selectedPatientForDICOM.name} ({getDICOMFilesForPatient(selectedPatientForDICOM).length} files)
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeDICOMViewer}
+                data-testid="button-close-dicom-viewer"
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden min-h-0">
+              <DICOMViewer
+                imageUrls={getDICOMFilesForPatient(selectedPatientForDICOM)}
+                isDICOM={true}
+                onClose={closeDICOMViewer}
+                patientInfo={{
+                  name: selectedPatientForDICOM.name || 'Unknown Patient',
+                  id: selectedPatientForDICOM.id || '',
+                  age: selectedPatientForDICOM.dateOfBirth ? new Date().getFullYear() - new Date(selectedPatientForDICOM.dateOfBirth).getFullYear() : 'Unknown',
+                  sex: selectedPatientForDICOM.gender || 'Unknown'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

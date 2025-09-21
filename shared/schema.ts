@@ -69,7 +69,8 @@ export const patients = pgTable("patients", {
   // New fields for the updated requirements
   emergency: boolean("emergency").default(false),
   reportStatus: varchar("report_status").default("pending"), // pending, completed, reviewed
-  studyTime: varchar("study_time"), // time portion of study
+  studyDate: timestamp("study_date").defaultNow(), // date and time when study was created
+  studyTime: varchar("study_time"), // time portion of study (for display purposes)
   accession: varchar("accession"), // accession number
   studyDesc: text("study_desc"), // study description
   modality: varchar("modality"), // CT, MRI, X-Ray, etc.
@@ -197,7 +198,11 @@ export const insertPatientSchema = createInsertSchema(patients).omit({
   dateOfBirth: z.union([
     z.date(),
     z.string().transform((str) => new Date(str))
-  ])
+  ]),
+  studyDate: z.union([
+    z.date(),
+    z.string().transform((str) => new Date(str))
+  ]).optional()
 });
 
 export const insertPatientFileSchema = createInsertSchema(patientFiles).omit({

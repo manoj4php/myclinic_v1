@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -26,6 +26,17 @@ export default function AddPatient() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [fileNameMapping, setFileNameMapping] = useState<Record<string, string>>({});
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  // Update current date/time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch doctors for the dropdown
   const { data: doctors } = useQuery({
@@ -46,10 +57,14 @@ export default function AddPatient() {
       chiefComplaint: "",
       medicalHistory: "",
       doctorId: "",
-      // New fields
+      // New fields - Auto-populate studyTime with current time
       emergency: false,
       reportStatus: "pending",
-      studyTime: "",
+      studyTime: currentDateTime.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }),
       accession: "",
       studyDesc: "",
       modality: "",
@@ -60,11 +75,74 @@ export default function AddPatient() {
     },
   });
 
+  // Update form's studyTime when currentDateTime changes
+  useEffect(() => {
+    form.setValue('studyTime', currentDateTime.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }));
+  }, [currentDateTime, form]);
+
+  // DICOM file detection functions
+  const isDICOMFile = (fileName: string) => {
+    const dicomExtensions = ['.dcm', '.dicom', '.dic'];
+    const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    const isDicomByExtension = dicomExtensions.includes(extension);
+    const isDicomByName = fileName.toLowerCase().includes('dicom');
+    // Also check for common DICOM file patterns (e.g., MRBRAIN files)
+    const isDicomByPattern = /\.(dcm|dicom|dic)$/i.test(fileName) || 
+                            /^(MR|CT|US|XR|RF|DX|CR|SC)[A-Z0-9_]+/i.test(fileName);
+    return isDicomByExtension || isDicomByName || isDicomByPattern;
+  };
+
+  const isRadiologyImage = (fileName: string) => {
+    const radiologyTerms = ['xray', 'ct', 'mri', 'scan', 'ultrasound'];
+    return radiologyTerms.some(term => fileName.toLowerCase().includes(term));
+  };
+
+  const getFileIcon = (fileName: string) => {
+    if (isDICOMFile(fileName)) {
+      return '🏥'; // Medical/DICOM icon
+    }
+    const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes(extension)) {
+      return '🖼️'; // Image icon
+    }
+    return '📄'; // Document icon
+  };
+
+  const getFileTypeLabel = (fileName: string) => {
+    if (isDICOMFile(fileName)) {
+      return 'DICOM';
+    }
+    if (isRadiologyImage(fileName)) {
+      return 'Radiology';
+    }
+    return 'Document';
+  };
+
   const createPatientMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const submissionTime = new Date(); // Get current time at submission
+      
+      // Clean up empty strings from optional fields
+      const cleanData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key, 
+          typeof value === 'string' && value.trim() === '' ? undefined : value
+        ])
+      );
+      
       const patientData = {
-        ...data,
+        ...cleanData,
         dateOfBirth: new Date(data.dateOfBirth),
+        studyDate: submissionTime, // Auto-set study date to current date/time
+        studyTime: submissionTime.toLocaleTimeString('en-US', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }), // Auto-set study time to current time
       };
       const response = await apiRequest("POST", "/api/patients", patientData);
       return response.json();
@@ -72,7 +150,17 @@ export default function AddPatient() {
     onSuccess: async (patient) => {
       // Upload files if any
       for (const fileURL of uploadedFiles) {
-        const fileName = fileURL.split('/').pop() || 'upload';
+        // Use the mapping to get the original filename
+        const originalFileName = fileNameMapping[fileURL];
+        const fileName = originalFileName || fileURL.split('/').pop() || 'upload';
+        
+        console.log('Creating patient file:', { 
+          patientId: patient.id, 
+          fileName: fileName, 
+          originalFileName, 
+          fileURL 
+        });
+        
         await apiRequest("PUT", "/api/patient-files", {
           patientId: patient.id,
           fileName,
@@ -81,6 +169,8 @@ export default function AddPatient() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      setUploadedFiles([]);
+      setFileNameMapping({}); // Clear the mapping
       toast({
         title: "Success",
         description: "Patient added successfully!",
@@ -126,14 +216,44 @@ export default function AddPatient() {
     console.log("Upload result:", result);
     
     if (result.successful && result.successful.length > 0) {
+      // Create a mapping of upload URLs to original filenames
+      const fileMapping: Record<string, string> = {};
+      
+      result.successful.forEach(file => {
+        let fileUrl = '';
+        
+        // New storage system returns fileUrl in the response
+        const responseBody = file.response?.body as any;
+        if (responseBody?.fileUrl) {
+          fileUrl = responseBody.fileUrl;
+        } else if (file.uploadURL) {
+          // Fallback: extract from upload URL for backward compatibility
+          fileUrl = file.uploadURL as string;
+        }
+        
+        if (fileUrl && file.name) {
+          fileMapping[fileUrl] = file.name as string;
+        }
+      });
+      
+      // Store the mapping for use in createPatientMutation
+      setFileNameMapping(prev => ({ ...prev, ...fileMapping }));
+      
       const newFileURLs = result.successful.map(file => {
-        // Extract the object ID from the upload URL for local storage
+        // New storage system returns fileUrl in the response
+        const responseBody = file.response?.body as any;
+        if (responseBody?.fileUrl) {
+          return responseBody.fileUrl;
+        }
+        
+        // Fallback: extract from upload URL for backward compatibility
         const uploadURL = file.uploadURL;
         if (uploadURL) {
           return uploadURL;
         }
-        // Fallback: use response data if available
-        return file.response?.body?.uploadURL || `File_${Date.now()}`;
+        
+        // Last resort fallback
+        return `File_${Date.now()}`;
       }).filter((url): url is string => url !== undefined);
       
       setUploadedFiles(prev => [...prev, ...newFileURLs]);
@@ -461,15 +581,36 @@ export default function AddPatient() {
                     name="studyTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Study Time</FormLabel>
+                        <FormLabel>Study Date & Time</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time"
-                            data-testid="input-study-time"
-                            {...field}
-                            value={field.value ?? ""} 
-                          />
+                          <div className="space-y-2">
+                            <Input 
+                              value={currentDateTime.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                              })}
+                              readOnly
+                              className="bg-gray-50"
+                              placeholder="Study Date"
+                            />
+                            <Input 
+                              type="time"
+                              data-testid="input-study-time"
+                              {...field}
+                              value={currentDateTime.toLocaleTimeString('en-US', { 
+                                hour12: false, 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })} 
+                              readOnly
+                              className="bg-gray-50"
+                            />
+                          </div>
                         </FormControl>
+                        <div className="text-xs text-muted-foreground">
+                          Auto-set to current date and time when patient is added (Updates live)
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -646,10 +787,11 @@ export default function AddPatient() {
                   </div>
                   <h4 className="text-lg font-medium text-foreground mb-2">Upload Medical Files</h4>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Upload scan images, reports, and other medical documents
+                    Upload scan images, reports, and other medical documents.<br/>
+                    🏥 <strong>DICOM files supported</strong> - Upload .dcm, .dicom files for advanced medical imaging
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Supported formats: JPEG, PNG, PDF, DICOM (Max 10MB per file)
+                    Supported formats: JPEG, PNG, PDF, <strong>DICOM (.dcm, .dicom)</strong>, Medical Images (Max 100MB per file)
                   </p>
                   
                   <ObjectUploader
@@ -666,14 +808,37 @@ export default function AddPatient() {
                 
                 {uploadedFiles.length > 0 && (
                   <div className="mt-4 space-y-2">
-                    <h5 className="text-sm font-medium text-foreground">Uploaded Files:</h5>
-                    <div className="space-y-1">
-                      {uploadedFiles.map((fileURL, index) => (
-                        <div key={index} className="text-sm text-muted-foreground">
-                          <i className="fas fa-file mr-2"></i>
-                          File {index + 1} uploaded successfully
-                        </div>
-                      ))}
+                    <h5 className="text-sm font-medium text-foreground">Uploaded Files ({uploadedFiles.length}):</h5>
+                    <div className="space-y-2">
+                      {uploadedFiles.map((fileURL, index) => {
+                        const originalFileName = fileNameMapping[fileURL] || `File ${index + 1}`;
+                        const fileType = getFileTypeLabel(originalFileName);
+                        const fileIcon = getFileIcon(originalFileName);
+                        
+                        return (
+                          <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-md">
+                            <div className="flex items-center space-x-3">
+                              <span className="text-lg">{fileIcon}</span>
+                              <div>
+                                <p className="text-sm font-medium">{originalFileName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {fileType}
+                                  {isDICOMFile(originalFileName) && (
+                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                                      Medical Imaging
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                                ✓ Uploaded
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

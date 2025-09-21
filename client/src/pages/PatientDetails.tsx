@@ -8,16 +8,14 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { UploadResult } from "@uppy/core";
-import { ArrowLeft, Calendar, Mail, Phone, MapPin, User, Stethoscope, FileText, Upload, Eye, Image as ImageIcon, MonitorPlay } from "lucide-react";
-import { DICOMViewer } from "@/components/DICOMViewer";
+import { ArrowLeft, Calendar, Mail, Phone, MapPin, User, Stethoscope, FileText, Upload, Eye, Image as ImageIcon } from "lucide-react";
 
 export default function PatientDetails() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [selectedFile, setSelectedFile] = useState<any>(null);
-  const [showDICOMViewer, setShowDICOMViewer] = useState(false);
+  const [fileNameMapping, setFileNameMapping] = useState<Record<string, string>>({});
 
   // Fetch patient details
   const { data: patient, isLoading: isPatientLoading } = useQuery({
@@ -43,6 +41,18 @@ export default function PatientDetails() {
 
   const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     if (result.successful) {
+      // Create a mapping of upload URLs to original filenames
+      const fileMapping: Record<string, string> = {};
+      
+      result.successful.forEach(file => {
+        if (file.uploadURL && file.name) {
+          fileMapping[file.uploadURL as string] = file.name as string;
+        }
+      });
+      
+      // Store the mapping for use in uploadFilesMutation
+      setFileNameMapping(fileMapping);
+      
       const newFileURLs = result.successful.map(file => file.uploadURL).filter((url): url is string => url !== undefined);
       setUploadedFiles(prev => [...prev, ...newFileURLs]);
     }
@@ -51,7 +61,17 @@ export default function PatientDetails() {
   const uploadFilesMutation = useMutation({
     mutationFn: async (fileURLs: string[]) => {
       for (const fileURL of fileURLs) {
-        const fileName = fileURL.split('/').pop() || 'upload';
+        // Use the mapping to get the original filename
+        const originalFileName = fileNameMapping[fileURL];
+        const fileName = originalFileName || fileURL.split('/').pop() || 'upload';
+        
+        console.log('Creating patient file:', { 
+          patientId: id, 
+          fileName: fileName, 
+          originalFileName, 
+          fileURL 
+        });
+        
         await apiRequest("PUT", "/api/patient-files", {
           patientId: id,
           fileName,
@@ -62,6 +82,7 @@ export default function PatientDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", id, "files"] });
       setUploadedFiles([]);
+      setFileNameMapping({}); // Clear the mapping
       toast({
         title: "Success",
         description: "Files uploaded successfully!",
@@ -83,36 +104,42 @@ export default function PatientDetails() {
   };
 
   const openFileViewer = (file: any) => {
-    setSelectedFile(file);
-    setShowDICOMViewer(true);
+    // Simple file download/view - open in new tab
+    const fileUrl = getFileUrl(file);
+    window.open(fileUrl, '_blank');
   };
 
-  const closeFileViewer = () => {
-    setShowDICOMViewer(false);
-    setSelectedFile(null);
-  };
-
-  const isDICOMFile = (fileName: string) => {
-    const dicomExtensions = ['.dcm', '.dicom', '.dic'];
-    const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
-    const isDicomByExtension = dicomExtensions.includes(extension);
-    const isDicomByName = fileName.toLowerCase().includes('dicom');
-    // Also check for common DICOM file patterns (e.g., MRBRAIN files)
-    const isDicomByPattern = /\.(dcm|dicom|dic)$/i.test(fileName) || 
-                            /^(MR|CT|US|XR|RF|DX|CR|SC)[A-Z0-9_]+/i.test(fileName);
-    return isDicomByExtension || isDicomByName || isDicomByPattern;
-  };
-
-  const isRadiologyImage = (fileName: string) => {
-    const radiologyTerms = ['xray', 'ct', 'mri', 'scan', 'ultrasound'];
-    return radiologyTerms.some(term => fileName.toLowerCase().includes(term));
+  const getFileUrl = (file: any) => {
+    console.log('getFileUrl called with file:', file);
+    if (!file.filePath) {
+      console.log('getFileUrl: No filePath in file object');
+      return '';
+    }
+    
+    // If filePath is already a full URL, use it as is
+    if (file.filePath.startsWith('http')) {
+      console.log('getFileUrl: Using full URL as-is:', file.filePath);
+      return file.filePath;
+    }
+    
+    // If filePath starts with /api/, use it as is (for backward compatibility)
+    if (file.filePath.startsWith('/api/')) {
+      const url = `${window.location.origin}${file.filePath}`;
+      console.log('getFileUrl: Constructing URL from /api/ path:', url);
+      return url;
+    }
+    
+    // For new storage system, construct the URL
+    const url = `${window.location.origin}/api/files/${file.filePath}`;
+    console.log('getFileUrl: Constructing new storage URL:', url);
+    return url;
   };
 
   const getFileIcon = (fileName: string) => {
-    if (isDICOMFile(fileName)) {
-      return <MonitorPlay className="w-5 h-5 text-blue-600" />;
-    }
     const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    if (['.dcm', '.dicom'].includes(extension)) {
+      return <FileText className="w-5 h-5 text-blue-600" />;
+    }
     if (['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes(extension)) {
       return <ImageIcon className="w-5 h-5 text-green-600" />;
     }
@@ -299,12 +326,6 @@ export default function PatientDetails() {
                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">Radiology</Badge>
                   )}
                 </span>
-                {Array.isArray(patientFiles) && patientFiles.some((file: any) => isDICOMFile(file.fileName)) && (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                    <MonitorPlay className="w-3 h-3 mr-1" />
-                    DICOM Available
-                  </Badge>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -329,36 +350,19 @@ export default function PatientDetails() {
                           <p className="font-medium text-sm" data-testid={`file-name-${file.id}`}>{file.fileName}</p>
                           <div className="flex items-center space-x-3 text-xs text-muted-foreground">
                             <span>Uploaded {new Date(file.createdAt).toLocaleDateString()}</span>
-                            {isDICOMFile(file.fileName) ? (
-                              <Badge variant="secondary" className="bg-blue-100 text-blue-700 px-2 py-0.5">DICOM</Badge>
-                            ) : isRadiologyImage(file.fileName) ? (
-                              <Badge variant="secondary" className="bg-green-100 text-green-700 px-2 py-0.5">Radiology</Badge>
-                            ) : null}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
                           size="sm"
-                          variant={isDICOMFile(file.fileName) ? "default" : "outline"}
+                          variant="outline"
                           onClick={() => openFileViewer(file)}
-                          className={`flex items-center space-x-1 ${isDICOMFile(file.fileName) ? 'bg-blue-600 hover:bg-blue-700 text-white' : isRadiologyImage(file.fileName) ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                          className="flex items-center space-x-1"
                           data-testid={`button-view-file-${file.id}`}
                         >
-                          {isDICOMFile(file.fileName) ? (
-                            <MonitorPlay className="w-4 h-4" />
-                          ) : isRadiologyImage(file.fileName) ? (
-                            <MonitorPlay className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                          <span>
-                            {isDICOMFile(file.fileName) 
-                              ? 'Open DICOM' 
-                              : isRadiologyImage(file.fileName) 
-                              ? 'Medical Viewer' 
-                              : 'View'}
-                          </span>
+                          <Eye className="w-4 h-4" />
+                          <span>View</span>
                         </Button>
                       </div>
                     </div>
@@ -430,51 +434,6 @@ export default function PatientDetails() {
             </CardContent>
           </Card>
         </div>
-
-        {/* DICOM Viewer Modal */}
-        {showDICOMViewer && selectedFile && (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-lg max-w-7xl max-h-full w-full h-full m-4 flex flex-col">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b">
-            <h3 className="text-lg font-semibold" data-testid="dicom-viewer-title">
-              Medical Viewer: {selectedFile.fileName}
-            </h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={closeFileViewer}
-              data-testid="button-close-dicom-viewer"
-            >
-              ✕
-            </Button>
-          </div>
-          <div className="flex-1 overflow-hidden min-h-0">
-            {isDICOMFile(selectedFile.fileName) || isRadiologyImage(selectedFile.fileName) || (patient as any)?.specialty === 'radiology' ? (
-              <DICOMViewer
-                imageUrl={selectedFile.filePath}
-                isDICOM={isDICOMFile(selectedFile.fileName) || isRadiologyImage(selectedFile.fileName) || (patient as any)?.specialty === 'radiology'}
-                onClose={closeFileViewer}
-                patientInfo={{
-                  name: (patient as any)?.name || 'Unknown Patient',
-                  id: (patient as any)?.id || '',
-                  age: (patient as any)?.dateOfBirth ? new Date().getFullYear() - new Date((patient as any).dateOfBirth).getFullYear() : 'Unknown',
-                  sex: (patient as any)?.gender || 'Unknown'
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded">
-                <img
-                  src={selectedFile.filePath}
-                  alt={selectedFile.fileName}
-                  className="max-w-full max-h-full object-contain"
-                  data-testid="image-viewer"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { forceLogout } from "@/lib/authUtils";
 import type { User } from "@/types";
 
 export function useAuth() {
@@ -15,9 +16,9 @@ export function useAuth() {
         const response = await apiRequest("GET", "/api/auth/user");
         return response.json();
       } catch (error: any) {
-        // If unauthorized, clear the token and return null
+        // If unauthorized, use the centralized force logout
         if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-          localStorage.removeItem("jwtToken");
+          await forceLogout('Session expired or invalid token');
           return null;
         }
         throw error;

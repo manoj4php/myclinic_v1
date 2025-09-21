@@ -1,0 +1,1 @@
+ALTER TABLE "patients" ADD COLUMN "study_date" timestamp DEFAULT now();

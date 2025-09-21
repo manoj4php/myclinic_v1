@@ -82,6 +82,7 @@ export function ObjectUploader({
               headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 'Content-Type': file.type || 'application/octet-stream',
+                'X-File-Name': file.name, // Send the original filename
               },
             };
           } catch (error) {

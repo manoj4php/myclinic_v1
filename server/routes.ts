@@ -5,8 +5,9 @@ import * as path from "path";
 import * as crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hashPassword } from "./replitAuth";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { getFileStorageProvider } from "./fileStorage";
 import { ObjectPermission } from "./objectAcl";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { emailService } from "./emailService";
 import { insertPatientSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
@@ -87,6 +88,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Logout endpoint
+  app.post('/api/auth/logout', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      
+      // Log the logout action
+      console.log(`User ${userId} logging out at ${new Date().toISOString()}`);
+      
+      // In a more advanced implementation, you could:
+      // 1. Invalidate the JWT token by adding it to a blacklist
+      // 2. Clear any server-side sessions
+      // 3. Log security events
+      // 4. Update last activity timestamp
+      
+      // For now, we'll just acknowledge the logout
+      res.json({ 
+        message: "Logout successful",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error during logout:", error);
+      res.status(500).json({ message: "Logout failed" });
     }
   });
 
@@ -183,9 +209,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get upload URL for files
   app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
-    const objectStorageService = new ObjectStorageService();
     try {
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      // Generate a unique upload endpoint for this file
+      const uploadId = crypto.randomUUID();
+      const uploadURL = `http://localhost:${process.env.PORT || 5000}/api/upload/${uploadId}`;
       res.json({ uploadURL });
     } catch (error) {
       console.error("Error generating upload URL:", error);
@@ -193,38 +220,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Local file upload handler for development
-  app.put("/api/objects/local-upload/:objectId", isAuthenticated, async (req, res) => {
+  // File upload handler using new storage system
+  app.put("/api/upload/:uploadId", isAuthenticated, async (req, res) => {
     try {
-      const { objectId } = req.params;
-      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
-      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
-      const filePath = path.join(uploadDir, objectId);
+      const { uploadId } = req.params;
+      const fileStorage = getFileStorageProvider();
       
-      // Ensure upload directory exists
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      
-      // Handle both raw binary data and form data
       let buffer: Buffer;
       
       if (req.headers['content-type']?.includes('multipart/form-data')) {
-        // Handle form data (if sent this way)
+        // Handle form data
         const chunks: Buffer[] = [];
         req.on('data', (chunk) => chunks.push(chunk));
-        req.on('end', () => {
-          buffer = Buffer.concat(chunks);
-          fs.writeFileSync(filePath, buffer);
-          res.json({ 
-            message: "File uploaded successfully", 
-            objectId,
-            uploadURL: `/api/objects/local-upload/${objectId}`
-          });
-        });
-        req.on('error', (error) => {
-          console.error("Upload stream error:", error);
-          res.status(500).json({ message: "Upload failed" });
+        req.on('end', async () => {
+          try {
+            buffer = Buffer.concat(chunks);
+            const fileName = req.headers['x-file-name'] as string || `upload-${uploadId}`;
+            const filePath = await fileStorage.uploadFile(buffer, fileName);
+            const fileUrl = fileStorage.getFileUrl(filePath);
+            
+            res.json({ 
+              message: "File uploaded successfully", 
+              uploadId,
+              filePath,
+              fileUrl,
+              size: buffer.length
+            });
+          } catch (error) {
+            console.error("Error saving file:", error);
+            res.status(500).json({ error: "Failed to save file" });
+          }
         });
       } else {
         // Handle raw binary data (Uppy's default method)
@@ -234,30 +259,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           buffer = Buffer.from(req.body);
         }
         
-        fs.writeFileSync(filePath, buffer);
-        console.log(`File uploaded successfully: ${objectId}, size: ${buffer.length} bytes`);
+        const fileName = req.headers['x-file-name'] as string || `upload-${uploadId}`;
+        const filePath = await fileStorage.uploadFile(buffer, fileName);
+        const fileUrl = fileStorage.getFileUrl(filePath);
+        
+        console.log(`File uploaded successfully: ${fileName}, size: ${buffer.length} bytes`);
         
         res.json({ 
           message: "File uploaded successfully", 
-          objectId,
-          uploadURL: `/api/objects/local-upload/${objectId}`,
-          size: buffer.length
+          uploadId,
+          filePath,
+          fileUrl,
+          size: buffer.length,
+          // Add the uploadURL field that Uppy expects for the complete event
+          uploadURL: fileUrl
         });
       }
-      
     } catch (error) {
       console.error("Error uploading file:", error);
-      res.status(500).json({ message: "Failed to upload file", error: error.message });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to upload file", error: errorMessage });
     }
   });
 
-  // Local file serve handler for development
-  app.get("/api/objects/local-upload/:objectId", isAuthenticated, async (req, res) => {
+  // File serving endpoint
+  app.get("/api/files/:fileName", isAuthenticated, async (req, res) => {
     try {
-      const { objectId } = req.params;
+      const { fileName } = req.params;
+      const fileStorage = getFileStorageProvider();
       const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
       const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
-      const filePath = path.join(uploadDir, objectId);
+      const filePath = path.join(uploadDir, fileName);
       
       // Check if file exists
       if (!fs.existsSync(filePath)) {
@@ -265,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Set appropriate headers for file serving
-      const fileExtension = path.extname(objectId).toLowerCase();
+      const fileExtension = path.extname(fileName).toLowerCase();
       let contentType = 'application/octet-stream';
       
       if (fileExtension === '.dcm' || fileExtension === '.dicom') {
@@ -274,6 +306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contentType = 'image/jpeg';
       } else if (fileExtension === '.png') {
         contentType = 'image/png';
+      } else if (fileExtension === '.pdf') {
+        contentType = 'application/pdf';
       }
       
       res.setHeader('Content-Type', contentType);
@@ -287,6 +321,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error("Error serving file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
+  // Compatibility endpoint for old upload URLs (GET /api/upload/:uploadId)
+  app.get("/api/upload/:uploadId", isAuthenticated, async (req, res) => {
+    try {
+      const { uploadId } = req.params;
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
+      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+      const filePath = path.join(uploadDir, uploadId);
+      
+      console.log(`Compatibility: Serving file from /api/upload/${uploadId} -> ${filePath}`);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.log(`Compatibility: File not found: ${filePath}`);
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Set appropriate headers for file serving
+      const fileExtension = path.extname(filePath).toLowerCase();
+      let contentType = 'application/octet-stream';
+      
+      if (fileExtension === '.dcm' || fileExtension === '.dicom') {
+        contentType = 'application/dicom';
+      } else if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+        contentType = 'image/jpeg';
+      } else if (fileExtension === '.png') {
+        contentType = 'image/png';
+      } else if (fileExtension === '.gif') {
+        contentType = 'image/gif';
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error("Compatibility: Error serving file:", error);
       res.status(500).json({ message: "Failed to serve file" });
     }
   });
@@ -331,6 +411,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error("Error serving uploaded file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
+  // Compatibility endpoint for old object local-upload URLs
+  app.get("/api/objects/local-upload/:objectId", isAuthenticated, async (req, res) => {
+    try {
+      const { objectId } = req.params;
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
+      const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
+      const filePath = path.join(uploadDir, objectId);
+      
+      console.log(`Compatibility: Serving file from /api/objects/local-upload/${objectId} -> ${filePath}`);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.log(`Compatibility: File not found: ${filePath}`);
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Set appropriate headers for file serving
+      const fileExtension = path.extname(filePath).toLowerCase();
+      let contentType = 'application/octet-stream';
+      
+      if (fileExtension === '.dcm' || fileExtension === '.dicom') {
+        contentType = 'application/dicom';
+      } else if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+        contentType = 'image/jpeg';
+      } else if (fileExtension === '.png') {
+        contentType = 'image/png';
+      } else if (fileExtension === '.gif') {
+        contentType = 'image/gif';
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error("Compatibility: Error serving local-upload file:", error);
       res.status(500).json({ message: "Failed to serve file" });
     }
   });
@@ -620,17 +746,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/patients', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const patientData = insertPatientSchema.parse(req.body);
       const createdBy = req.user?.claims?.sub;
       const ipAddress = req.ip;
 
-      const patient = await storage.createPatient({
+      console.log("Creating patient with user ID:", createdBy);
+      console.log("Raw request body:", JSON.stringify(req.body, null, 2));
+
+      // Clean the request body before schema validation
+      const cleanedBody = { ...req.body };
+      
+      // Handle foreign key fields - convert empty strings to null or valid values
+      if (cleanedBody.reportedBy === "" || !cleanedBody.reportedBy) {
+        cleanedBody.reportedBy = createdBy; // Default to the creating user
+      }
+      
+      console.log("Cleaned request body:", JSON.stringify(cleanedBody, null, 2));
+
+      const patientData = insertPatientSchema.parse(cleanedBody);
+
+      // Verify user exists before creating patient
+      if (createdBy) {
+        const user = await storage.getUser(createdBy);
+        if (!user) {
+          console.error("User not found:", createdBy);
+          return res.status(400).json({ message: "Invalid user ID" });
+        }
+      }
+
+      // Final patient data preparation
+      const finalPatientData = {
         ...patientData,
         doctorId: createdBy,
+        reportedBy: patientData.reportedBy || createdBy,
         createdBy,
         updatedBy: createdBy,
         ipAddress,
-      });
+      };
+
+      console.log("Final patient data:", JSON.stringify(finalPatientData, null, 2));
+
+      const patient = await storage.createPatient(finalPatientData);
 
       // Send email notification to doctor
       const user = await storage.getUser(createdBy!);
@@ -768,8 +923,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/patient-files', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    let patientId: string | undefined;
+    let fileName: string | undefined;
+    let fileURL: string | undefined;
+    let filePath: string | undefined;
+    
     try {
-      const { patientId, fileName, fileURL } = req.body;
+      ({ patientId, fileName, fileURL } = req.body);
       const uploadedBy = req.user?.claims?.sub;
       const ipAddress = req.ip;
 
@@ -777,19 +937,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        fileURL,
-        {
-          owner: uploadedBy!,
-          visibility: "private",
+      // For the new storage system, extract the file path from the URL
+      filePath = fileURL;
+      
+      // Handle different URL formats
+      if (fileURL.includes('/api/files/')) {
+        // New format: http://localhost:5000/api/files/filename.ext
+        // This is the correct format that includes the extension
+        filePath = fileURL.split('/api/files/')[1];
+      } else if (fileURL.includes('/api/upload/')) {
+        // Legacy upload format: http://localhost:5000/api/upload/uploadId
+        // For legacy uploads, we need to find the actual file with extension
+        const uploadId = fileURL.split('/api/upload/')[1];
+        
+        // Try to find the actual file in storage with extension
+        const uploadDir = process.env.PRIVATE_OBJECT_DIR || "storage/private/uploads";
+        
+        try {
+          const files = fs.readdirSync(uploadDir);
+          // Look for files that start with the uploadId
+          const matchingFile = files.find((file: string) => file.startsWith(uploadId));
+          
+          if (matchingFile) {
+            filePath = matchingFile;
+            console.log(`Found matching file for uploadId ${uploadId}: ${matchingFile}`);
+          } else {
+            // Fallback: try to infer extension from fileName
+            const extension = fileName.includes('.') ? fileName.split('.').pop() : '';
+            filePath = extension ? `${uploadId}.${extension}` : uploadId;
+            console.log(`No exact match found for uploadId ${uploadId}, using inferred path: ${filePath}`);
+          }
+        } catch (fsError) {
+          console.warn(`Could not read upload directory: ${fsError}`);
+          // Fallback to original logic
+          filePath = uploadId;
         }
-      );
+      } else if (fileURL.includes('/api/objects/local-upload/')) {
+        // Another legacy format: http://localhost:5000/api/objects/local-upload/uploadId
+        filePath = fileURL.split('/api/objects/local-upload/')[1];
+      }
+      
+      console.log('Creating patient file with:', { patientId, fileName, filePath: filePath, fileURL });
 
       const file = await storage.createPatientFile({
         patientId,
         fileName,
-        filePath: objectPath,
+        filePath,
         fileType: fileName.split('.').pop() || 'unknown',
         uploadedBy,
         createdBy: uploadedBy,
@@ -797,10 +990,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress,
       });
 
-      res.status(201).json({ file, objectPath });
+      res.status(201).json({ file, filePath });
     } catch (error) {
       console.error("Error creating patient file:", error);
-      res.status(500).json({ error: "Internal server error" });
+      console.error("Request data:", { patientId, fileName, fileURL, filePath });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: "Internal server error", details: errorMessage });
     }
   });
 

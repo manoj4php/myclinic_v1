@@ -1,11 +1,12 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, createContext, useContext, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Menu } from "lucide-react";
 import type { User, Notification } from "@/types";
 import { ClinicLogo, ClinicLogoText } from "@/components/Logo";
+import { logout } from "@/lib/authUtils";
 
 const navigationItems = [
   { path: "/", label: "Dashboard", icon: "fa-chart-pie" },
@@ -52,6 +53,7 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const queryClient = useQueryClient();
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -60,25 +62,8 @@ export default function Sidebar() {
   const unreadNotifications = notifications?.filter((n: Notification) => !n.isRead)?.length || 0;
 
   const handleLogout = async () => {
-    try {
-      // Clear the JWT token
-      localStorage.removeItem("jwtToken");
-      
-      // Optional: Call logout endpoint to clean up server-side session
-      try {
-        await fetch("/api/logout", { method: "POST" });
-      } catch (error) {
-        // Ignore errors from logout endpoint since token is already cleared
-        console.warn("Logout endpoint error:", error);
-      }
-      
-      // Redirect to login page
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Still redirect even if there's an error
-      window.location.href = "/";
-    }
+    // Use the centralized logout function which handles all cleanup
+    await logout();
   };
 
   const getDisplayName = () => {

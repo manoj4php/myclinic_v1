@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { logoutWithConfirmation } from "@/lib/authUtils";
 import type { User } from "@/types";
 
 export default function Settings() {
@@ -431,7 +432,7 @@ export default function Settings() {
                   <p className="text-xs text-muted-foreground mb-4">End your current session and log out</p>
                   <Button 
                     variant="outline" 
-                    onClick={() => window.location.href = "/api/logout"}
+                    onClick={logoutWithConfirmation}
                     data-testid="button-logout-settings"
                   >
                     <i className="fas fa-sign-out-alt mr-2"></i>
