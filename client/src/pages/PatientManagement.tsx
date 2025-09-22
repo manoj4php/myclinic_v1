@@ -36,6 +36,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { EditPatientModal } from "@/components/EditPatientModal";
 import { DICOMViewer } from "@/components/DICOMViewer";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 export default function PatientManagement() {
   const [, setLocation] = useLocation();
@@ -47,6 +48,11 @@ export default function PatientManagement() {
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
   const [showDICOMViewer, setShowDICOMViewer] = useState(false);
   const [selectedPatientForDICOM, setSelectedPatientForDICOM] = useState<any>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
   const { toast } = useToast();
 
   // Delete patient mutation
@@ -94,9 +100,29 @@ export default function PatientManagement() {
     },
   });
 
-  const { data: patients, isLoading } = useQuery({
-    queryKey: ["/api/patients"],
+  const { data: patientsResponse, isLoading } = useQuery({
+    queryKey: ["/api/patients", { 
+      page: currentPage, 
+      limit: itemsPerPage, 
+      search: searchQuery || undefined,
+      specialty: selectedSpecialty !== "all" ? selectedSpecialty : undefined 
+    }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
+      
+      if (searchQuery) params.append('search', searchQuery);
+      if (selectedSpecialty !== "all") params.append('specialty', selectedSpecialty);
+      
+      const response = await apiRequest("GET", `/api/patients?${params.toString()}`);
+      return await response.json();
+    },
   });
+
+  const patients = patientsResponse?.data || [];
+  const pagination = patientsResponse?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
 
   // Fetch file counts for each patient using useQueries to avoid hooks violation
   const fileQueries = useQueries({
@@ -114,6 +140,31 @@ export default function PatientManagement() {
       fileCount: Array.isArray(files) ? files.length : 0
     };
   }) : [];
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setSelectedPatients([]); // Clear selections when changing pages
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+    setSelectedPatients([]); // Clear selections
+  };
+
+  // Reset page when filters change
+  const handleSearchChange = (newSearchQuery: string) => {
+    setSearchQuery(newSearchQuery);
+    setCurrentPage(1);
+    setSelectedPatients([]);
+  };
+
+  const handleSpecialtyChange = (newSpecialty: string) => {
+    setSelectedSpecialty(newSpecialty);
+    setCurrentPage(1);
+    setSelectedPatients([]);
+  };
 
   // DICOM file detection and handling functions
   const isDICOMFile = (fileName: string) => {
@@ -297,7 +348,7 @@ export default function PatientManagement() {
             <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
               <span className="flex items-center space-x-1">
                 <User className="w-4 h-4" />
-                <span>Total: {filteredPatients?.length || 0} patients</span>
+                <span>Total: {pagination.total || 0} patients</span>
               </span>
               <span className="flex items-center space-x-1">
                 <Calendar className="w-4 h-4" />
@@ -336,13 +387,13 @@ export default function PatientManagement() {
                 type="text"
                 placeholder="Search by name, ID, phone..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
                 data-testid="input-search-patients"
               />
             </div>
             
-            <Select value={selectedSpecialty} onValueChange={setSelectedSpecialty}>
+            <Select value={selectedSpecialty} onValueChange={handleSpecialtyChange}>
               <SelectTrigger data-testid="select-specialty">
                 <SelectValue placeholder="All Specialties" />
               </SelectTrigger>
@@ -395,8 +446,8 @@ export default function PatientManagement() {
               variant="outline" 
               className="flex items-center space-x-2"
               onClick={() => {
-                setSearchQuery("");
-                setSelectedSpecialty("all");
+                handleSearchChange("");
+                handleSpecialtyChange("all");
                 setSelectedStatus("all");
                 setSelectedModality("all");
                 setSelectedDate("");
@@ -712,22 +763,18 @@ export default function PatientManagement() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination */}
+          <DataTablePagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         </CardContent>
       </Card>
-
-      {/* Summary Footer */}
-      <div className="mt-6 flex items-center justify-between text-sm text-gray-500">
-        <div className="flex items-center space-x-4">
-          <span>Showing {filteredPatients?.length || 0} patients</span>
-          {selectedPatients.length > 0 && (
-            <span className="text-blue-600">{selectedPatients.length} selected</span>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <span>Last updated: {new Date().toLocaleTimeString()}</span>
-          <RefreshCw className="w-4 h-4" />
-        </div>
-      </div>
 
       {/* DICOM Viewer Modal */}
       {showDICOMViewer && selectedPatientForDICOM && (

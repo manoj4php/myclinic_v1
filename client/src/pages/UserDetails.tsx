@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import UserForm from "@/components/UserForm";
 import { ArrowLeft, Mail, Phone, MapPin, User, Calendar, UserCheck, Building } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function UserDetails() {
   const { id } = useParams();
@@ -14,6 +15,10 @@ export default function UserDetails() {
   // Fetch user details
   const { data: user, isLoading } = useQuery({
     queryKey: ["/api/users", id],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/users/${id}`);
+      return await response.json();
+    },
     enabled: !!id,
   });
 

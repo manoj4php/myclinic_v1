@@ -113,8 +113,15 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
                     data-testid="input-email"
                     {...field}
                     value={field.value ?? ""} 
+                    disabled={isEditing} // Email cannot be edited
+                    className={isEditing ? "bg-muted text-muted-foreground" : ""}
                   />
                 </FormControl>
+                {isEditing && (
+                  <p className="text-xs text-muted-foreground">
+                    Email cannot be changed after account creation
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -206,9 +213,16 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Specialty</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                <Select 
+                  onValueChange={field.onChange} 
+                  value={field.value ?? undefined}
+                  disabled={isEditing} // Specialty cannot be edited
+                >
                   <FormControl>
-                    <SelectTrigger data-testid="select-specialty">
+                    <SelectTrigger 
+                      data-testid="select-specialty"
+                      className={isEditing ? "bg-muted text-muted-foreground" : ""}
+                    >
                       <SelectValue placeholder="Select specialty (if doctor)" />
                     </SelectTrigger>
                   </FormControl>
@@ -220,6 +234,11 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
                     <SelectItem value="surgeon">Surgery</SelectItem>
                   </SelectContent>
                 </Select>
+                {isEditing && (
+                  <p className="text-xs text-muted-foreground">
+                    Specialty cannot be changed after account creation
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}

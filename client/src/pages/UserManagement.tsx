@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
@@ -23,10 +24,64 @@ export default function UserManagement() {
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [changePasswordUser, setChangePasswordUser] = useState<{id: string, name: string} | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ["/api/users"],
+  const { data: usersResponse, isLoading } = useQuery({
+    queryKey: ["/api/users", { 
+      page: currentPage, 
+      limit: itemsPerPage, 
+      search: searchQuery || undefined,
+      role: selectedRole || undefined 
+    }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
+      
+      if (searchQuery) params.append('search', searchQuery);
+      if (selectedRole && selectedRole !== "all") params.append('role', selectedRole);
+      
+      const response = await apiRequest("GET", `/api/users?${params.toString()}`);
+      return await response.json();
+    },
   });
+
+  const users = usersResponse?.data || [];
+  const pagination = usersResponse?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Reset page when filters change
+  const handleSearchChange = (newSearchQuery: string) => {
+    setSearchQuery(newSearchQuery);
+    setCurrentPage(1);
+  };
+
+  const handleRoleChange = (newRole: string) => {
+    setSelectedRole(newRole);
+    setCurrentPage(1);
+  };
+
+  // Since filtering is now handled by backend, we use the returned users directly
+  const filteredUsers = users;
+
+  const userStats = {
+    total: pagination.total,
+    doctors: Array.isArray(users) ? users.filter((u: any) => u.role === 'user').length : 0,
+    admins: Array.isArray(users) ? users.filter((u: any) => u.role === 'admin' || u.role === 'super_admin').length : 0,
+  };
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -47,20 +102,6 @@ export default function UserManagement() {
       });
     },
   });
-
-  const filteredUsers = Array.isArray(users) ? users.filter((user: any) => {
-    const matchesSearch = user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = selectedRole === "all" || !selectedRole || user.role === selectedRole;
-    return matchesSearch && matchesRole;
-  }) : [];
-
-  const userStats = Array.isArray(users) ? {
-    total: users.length,
-    doctors: users.filter((u: any) => u.role === 'user').length,
-    admins: users.filter((u: any) => u.role === 'admin' || u.role === 'super_admin').length,
-  } : { total: 0, doctors: 0, admins: 0 };
 
   const roleColors = {
     super_admin: "bg-destructive text-destructive-foreground",
@@ -150,11 +191,11 @@ export default function UserManagement() {
                 type="text"
                 placeholder="Search users..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-64"
                 data-testid="input-search-users"
               />
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <Select value={selectedRole} onValueChange={handleRoleChange}>
                 <SelectTrigger className="w-48" data-testid="select-role-filter">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
@@ -303,6 +344,16 @@ export default function UserManagement() {
             </div>
           )}
         </CardContent>
+        
+        {/* Pagination */}
+        <DataTablePagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.total}
+          itemsPerPage={pagination.limit}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       </Card>
 
       {/* Edit User Dialog */}

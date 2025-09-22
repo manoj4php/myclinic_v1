@@ -236,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             buffer = Buffer.concat(chunks);
             const fileName = req.headers['x-file-name'] as string || `upload-${uploadId}`;
-            const filePath = await fileStorage.uploadFile(buffer, fileName);
+            const filePath = await fileStorage.uploadFile(buffer, fileName, { uploadId });
             const fileUrl = fileStorage.getFileUrl(filePath);
             
             res.json({ 
@@ -260,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         const fileName = req.headers['x-file-name'] as string || `upload-${uploadId}`;
-        const filePath = await fileStorage.uploadFile(buffer, fileName);
+        const filePath = await fileStorage.uploadFile(buffer, fileName, { uploadId });
         const fileUrl = fileStorage.getFileUrl(filePath);
         
         console.log(`File uploaded successfully: ${fileName}, size: ${buffer.length} bytes`);
@@ -289,11 +289,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileStorage = getFileStorageProvider();
       const privateObjectDir = process.env.PRIVATE_OBJECT_DIR || "storage/private";
       const uploadDir = path.join(process.cwd(), privateObjectDir, "uploads");
-      const filePath = path.join(uploadDir, fileName);
+      let filePath = path.join(uploadDir, fileName);
       
       // Check if file exists
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: "File not found" });
+        // Try to find a file with similar name pattern for fallback
+        try {
+          const files = fs.readdirSync(uploadDir);
+          const fileExtension = path.extname(fileName).toLowerCase();
+          const baseName = path.basename(fileName, fileExtension);
+          
+          // Look for files that might match (same extension)
+          const matchingFile = files.find((file: string) => {
+            const fileExt = path.extname(file).toLowerCase();
+            return fileExt === fileExtension && file.includes(baseName.substring(0, 8)); // Match first 8 characters
+          });
+          
+          if (matchingFile) {
+            filePath = path.join(uploadDir, matchingFile);
+            console.log(`Fallback: Found similar file ${matchingFile} for requested ${fileName}`);
+          } else {
+            return res.status(404).json({ message: "File not found" });
+          }
+        } catch (readError) {
+          return res.status(404).json({ message: "File not found" });
+        }
       }
       
       // Set appropriate headers for file serving
@@ -464,11 +484,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Management Routes
   app.get('/api/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const users = await storage.getAllUsers();
-      res.json(users);
+      const { 
+        page = '1', 
+        limit = '10',
+        search,
+        role,
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = req.query;
+      
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const offset = (pageNum - 1) * limitNum;
+
+      const result = await storage.getAllUsers(limitNum, offset, sortBy as string, sortOrder as string, search as string, role as string);
+      
+      res.json({
+        data: result.users || result,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: result.total || (Array.isArray(result) ? result.length : 0),
+          totalPages: Math.ceil((result.total || (Array.isArray(result) ? result.length : 0)) / limitNum)
+        }
+      });
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Get single user by ID
+  app.get('/api/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      console.log("Fetching user with ID:", id);
+      
+      const user = await storage.getUser(id);
+      
+      if (!user) {
+        console.log("User not found for ID:", id);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      console.log("User found:", user.email);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
@@ -543,16 +606,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedBy = req.user?.claims?.sub;
       const ipAddress = req.ip;
 
-      const user = await storage.updateUser(id, {
-        ...updates,
-        updatedBy,
-        ipAddress,
-      });
+      console.log("Updating user with ID:", id);
+      console.log("Update data:", JSON.stringify(updates, null, 2));
+      console.log("Updated by:", updatedBy);
 
-      res.json(user);
-    } catch (error) {
+      // Validate that the user exists
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        console.error("User not found for update:", id);
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Validate the update data using the insertUserSchema (partial)
+      try {
+        const validatedUpdates = insertUserSchema.partial().parse(updates);
+        console.log("Validated updates:", JSON.stringify(validatedUpdates, null, 2));
+        
+        const user = await storage.updateUser(id, {
+          ...validatedUpdates,
+          updatedBy,
+          ipAddress,
+        });
+
+        console.log("User updated successfully:", user.id);
+        res.json(user);
+      } catch (validationError: any) {
+        console.error("Validation error:", validationError);
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: validationError.errors 
+        });
+      }
+    } catch (error: any) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: "Failed to update user" });
+      res.status(500).json({ message: "Failed to update user", error: error.message });
     }
   });
 
@@ -621,19 +708,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Patient Management Routes
   app.get('/api/patients', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const { specialty, search } = req.query;
+      const { 
+        specialty, 
+        search, 
+        page = '1', 
+        limit = '10',
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = req.query;
       
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const offset = (pageNum - 1) * limitNum;
+
       // Try database first, fallback to mock data
       try {
-        let patients;
+        let result;
         if (search) {
-          patients = await storage.searchPatients(search as string);
+          result = await storage.searchPatients(search as string, limitNum, offset, sortBy as string, sortOrder as string);
         } else if (specialty) {
-          patients = await storage.getPatientsBySpecialty(specialty as string);
+          result = await storage.getPatientsBySpecialty(specialty as string, limitNum, offset, sortBy as string, sortOrder as string);
         } else {
-          patients = await storage.getAllPatients();
+          result = await storage.getAllPatients(limitNum, offset, sortBy as string, sortOrder as string);
         }
-        res.json(patients);
+        
+        // Return paginated response
+        res.json({
+          data: result.patients || result,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total: result.total || (Array.isArray(result) ? result.length : 0),
+            totalPages: Math.ceil((result.total || (Array.isArray(result) ? result.length : 0)) / limitNum)
+          }
+        });
         return;
       } catch (dbError) {
         console.warn("Database not available, using mock patient data");
@@ -675,7 +783,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
-      res.json(mockPatients);
+      // Apply pagination to mock data
+      const total = mockPatients.length;
+      const paginatedMockPatients = mockPatients.slice(offset, offset + limitNum);
+      
+      res.json({
+        data: paginatedMockPatients,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
     } catch (error) {
       console.error("Error fetching patients:", error);
       res.status(500).json({ message: "Failed to fetch patients" });
@@ -758,6 +878,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle foreign key fields - convert empty strings to null or valid values
       if (cleanedBody.reportedBy === "" || !cleanedBody.reportedBy) {
         cleanedBody.reportedBy = createdBy; // Default to the creating user
+      }
+      
+      // Validate that reportedBy user exists if provided
+      if (cleanedBody.reportedBy && cleanedBody.reportedBy !== createdBy) {
+        const reportedByUser = await storage.getUser(cleanedBody.reportedBy);
+        if (!reportedByUser) {
+          console.error("Reported by user not found:", cleanedBody.reportedBy);
+          cleanedBody.reportedBy = createdBy; // Fallback to creating user
+        }
       }
       
       console.log("Cleaned request body:", JSON.stringify(cleanedBody, null, 2));
@@ -1012,7 +1141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/analytics/dashboard-stats', isAuthenticated, async (req, res) => {
     try {
-      const totalPatients = (await storage.getAllPatients()).length;
+      const totalPatientsResult = await storage.getAllPatients(1, 0);
+      const totalPatients = totalPatientsResult.total;
       const todayPatients = await storage.getTodayPatientCount();
       const pendingReports = await storage.getPendingReportsCount();
 

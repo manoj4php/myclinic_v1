@@ -86,7 +86,7 @@ async function seedPatients() {
       center: center,
       refBy: `Dr. ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
       isPrinted: Math.random() < 0.3, // 30% printed
-      reportedBy: reportedBy,
+      reportedBy: null, // Set to null to avoid foreign key constraint
       isActive: true,
       createdAt: randomDate,
       updatedAt: randomDate,

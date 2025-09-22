@@ -23,7 +23,8 @@ export class LocalFileStorage implements FileStorageProvider {
   }
 
   async uploadFile(buffer: Buffer, fileName: string, metadata?: any): Promise<string> {
-    const fileId = randomUUID();
+    // If metadata contains uploadId, use it instead of generating new UUID
+    const fileId = metadata?.uploadId || randomUUID();
     const extension = path.extname(fileName);
     const storedFileName = `${fileId}${extension}`;
     const filePath = path.join(this.baseDir, storedFileName);

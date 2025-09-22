@@ -27,9 +27,10 @@ export interface IStorage {
   
   // Additional user operations
   getUserByUsername(username: string): Promise<User | undefined>;
+  findUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: any): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(limit?: number, offset?: number, sortBy?: string, sortOrder?: string, search?: string, role?: string): Promise<{ users: User[], total: number }>;
   
   // Patient operations
   getPatient(id: string): Promise<Patient | undefined>;
@@ -37,10 +38,10 @@ export interface IStorage {
   updatePatient(id: string, updates: Partial<Patient>): Promise<Patient>;
   deletePatient(id: string): Promise<void>;
   hardDeletePatient(id: string): Promise<void>;
-  getAllPatients(): Promise<Patient[]>;
-  getPatientsBySpecialty(specialty: string): Promise<Patient[]>;
+  getAllPatients(limit?: number, offset?: number, sortBy?: string, sortOrder?: string): Promise<{ patients: Patient[], total: number }>;
+  getPatientsBySpecialty(specialty: string, limit?: number, offset?: number, sortBy?: string, sortOrder?: string): Promise<{ patients: Patient[], total: number }>;
   getPatientsByDoctor(doctorId: string): Promise<Patient[]>;
-  searchPatients(query: string): Promise<Patient[]>;
+  searchPatients(query: string, limit?: number, offset?: number, sortBy?: string, sortOrder?: string): Promise<{ patients: Patient[], total: number }>;
   
   // Patient files operations
   createPatientFile(file: InsertPatientFile): Promise<PatientFile>;
@@ -119,8 +120,65 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).orderBy(desc(users.createdAt));
+  async getAllUsers(
+    limit: number = 10, 
+    offset: number = 0, 
+    sortBy: string = 'createdAt', 
+    sortOrder: string = 'desc',
+    search?: string,
+    role?: string
+  ): Promise<{ users: User[], total: number }> {
+    // Build base queries
+    let whereConditions = [];
+    
+    if (search) {
+      whereConditions.push(sql`(
+        lower(${users.firstName}) LIKE lower(${`%${search}%`}) OR 
+        lower(${users.lastName}) LIKE lower(${`%${search}%`}) OR 
+        lower(${users.email}) LIKE lower(${`%${search}%`})
+      )`);
+    }
+    
+    if (role && role !== 'all') {
+      whereConditions.push(eq(users.role, role as any));
+    }
+
+    // Count total
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(users);
+    if (whereConditions.length > 0) {
+      countQuery = countQuery.where(whereConditions.length === 1 ? whereConditions[0] : and(...whereConditions)) as any;
+    }
+    
+    // Main query
+    let query = db.select().from(users);
+    if (whereConditions.length > 0) {
+      query = query.where(whereConditions.length === 1 ? whereConditions[0] : and(...whereConditions)) as any;
+    }
+
+    // Apply sorting
+    if (sortBy === 'firstName') {
+      query = (sortOrder === 'asc' ? query.orderBy(users.firstName) : query.orderBy(desc(users.firstName))) as any;
+    } else if (sortBy === 'lastName') {
+      query = (sortOrder === 'asc' ? query.orderBy(users.lastName) : query.orderBy(desc(users.lastName))) as any;
+    } else if (sortBy === 'email') {
+      query = (sortOrder === 'asc' ? query.orderBy(users.email) : query.orderBy(desc(users.email))) as any;
+    } else {
+      query = (sortOrder === 'asc' ? query.orderBy(users.createdAt) : query.orderBy(desc(users.createdAt))) as any;
+    }
+
+    // Apply pagination
+    query = query.limit(limit).offset(offset) as any;
+
+    // Execute queries
+    const [usersResult, totalResult] = await Promise.all([
+      query,
+      countQuery
+    ]);
+
+    return {
+      users: usersResult,
+      total: totalResult[0]?.count || 0
+    };
   }
 
   // Patient operations
@@ -169,16 +227,62 @@ export class DatabaseStorage implements IStorage {
     await db.delete(patients).where(eq(patients.id, id));
   }
 
-  async getAllPatients(): Promise<Patient[]> {
-    return await db.select().from(patients).orderBy(desc(patients.createdAt));
+  async getAllPatients(
+    limit: number = 10, 
+    offset: number = 0, 
+    sortBy: string = 'createdAt', 
+    sortOrder: string = 'desc'
+  ): Promise<{ patients: Patient[], total: number }> {
+    // Count total
+    const totalResult = await db.select({ count: sql<number>`count(*)` }).from(patients);
+    
+    // Main query with sorting and pagination
+    let query = db.select().from(patients);
+    
+    if (sortBy === 'name') {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.name) : query.orderBy(desc(patients.name))) as any;
+    } else if (sortBy === 'studyDate') {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.studyDate) : query.orderBy(desc(patients.studyDate))) as any;
+    } else {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.createdAt) : query.orderBy(desc(patients.createdAt))) as any;
+    }
+
+    const patientsResult = await query.limit(limit).offset(offset);
+
+    return {
+      patients: patientsResult,
+      total: totalResult[0]?.count || 0
+    };
   }
 
-  async getPatientsBySpecialty(specialty: string): Promise<Patient[]> {
-    return await db
-      .select()
-      .from(patients)
-      .where(eq(patients.specialty, specialty as any))
-      .orderBy(desc(patients.createdAt));
+  async getPatientsBySpecialty(
+    specialty: string,
+    limit: number = 10, 
+    offset: number = 0, 
+    sortBy: string = 'createdAt', 
+    sortOrder: string = 'desc'
+  ): Promise<{ patients: Patient[], total: number }> {
+    // Count total
+    const totalResult = await db.select({ count: sql<number>`count(*)` }).from(patients)
+      .where(eq(patients.specialty, specialty as any));
+    
+    // Main query with sorting and pagination
+    let query = db.select().from(patients).where(eq(patients.specialty, specialty as any));
+    
+    if (sortBy === 'name') {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.name) : query.orderBy(desc(patients.name))) as any;
+    } else if (sortBy === 'studyDate') {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.studyDate) : query.orderBy(desc(patients.studyDate))) as any;
+    } else {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.createdAt) : query.orderBy(desc(patients.createdAt))) as any;
+    }
+
+    const patientsResult = await query.limit(limit).offset(offset);
+
+    return {
+      patients: patientsResult,
+      total: totalResult[0]?.count || 0
+    };
   }
 
   async getPatientsByDoctor(doctorId: string): Promise<Patient[]> {
@@ -189,12 +293,40 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(patients.createdAt));
   }
 
-  async searchPatients(query: string): Promise<Patient[]> {
-    return await db
-      .select()
-      .from(patients)
-      .where(like(patients.name, `%${query}%`))
-      .orderBy(desc(patients.createdAt));
+  async searchPatients(
+    searchQuery: string,
+    limit: number = 10, 
+    offset: number = 0, 
+    sortBy: string = 'createdAt', 
+    sortOrder: string = 'desc'
+  ): Promise<{ patients: Patient[], total: number }> {
+    const searchFilter = sql`(
+      lower(${patients.name}) LIKE lower(${`%${searchQuery}%`}) OR 
+      lower(${patients.email}) LIKE lower(${`%${searchQuery}%`}) OR 
+      lower(${patients.chiefComplaint}) LIKE lower(${`%${searchQuery}%`})
+    )`;
+
+    // Count total
+    const totalResult = await db.select({ count: sql<number>`count(*)` }).from(patients)
+      .where(searchFilter);
+    
+    // Main query with sorting and pagination
+    let query = db.select().from(patients).where(searchFilter);
+    
+    if (sortBy === 'name') {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.name) : query.orderBy(desc(patients.name))) as any;
+    } else if (sortBy === 'studyDate') {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.studyDate) : query.orderBy(desc(patients.studyDate))) as any;
+    } else {
+      query = (sortOrder === 'asc' ? query.orderBy(patients.createdAt) : query.orderBy(desc(patients.createdAt))) as any;
+    }
+
+    const patientsResult = await query.limit(limit).offset(offset);
+
+    return {
+      patients: patientsResult,
+      total: totalResult[0]?.count || 0
+    };
   }
 
   // Patient files operations
