@@ -231,7 +231,6 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
             if (cornerstoneTools.RectangleRoiTool) cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool);
             if (cornerstoneTools.EllipticalRoiTool) cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool);
             if (cornerstoneTools.ArrowAnnotateTool) cornerstoneTools.addTool(cornerstoneTools.ArrowAnnotateTool);
-            if (cornerstoneTools.TextMarkerTool) cornerstoneTools.addTool(cornerstoneTools.TextMarkerTool);
             if (cornerstoneTools.FreehandRoiTool) cornerstoneTools.addTool(cornerstoneTools.FreehandRoiTool);
             if (cornerstoneTools.ProbeTool) cornerstoneTools.addTool(cornerstoneTools.ProbeTool);
             
@@ -244,7 +243,6 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
               RectangleRoi: !!cornerstoneTools.RectangleRoiTool,
               EllipticalRoi: !!cornerstoneTools.EllipticalRoiTool,
               ArrowAnnotate: !!cornerstoneTools.ArrowAnnotateTool,
-              TextMarker: !!cornerstoneTools.TextMarkerTool,
               FreehandRoi: !!cornerstoneTools.FreehandRoiTool,
               Probe: !!cornerstoneTools.ProbeTool
             });
@@ -512,7 +510,6 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
         { name: 'RectangleRoi', tool: cornerstoneTools.RectangleRoiTool },
         { name: 'EllipticalRoi', tool: cornerstoneTools.EllipticalRoiTool },
         { name: 'ArrowAnnotate', tool: cornerstoneTools.ArrowAnnotateTool },
-        { name: 'TextMarker', tool: cornerstoneTools.TextMarkerTool },
         { name: 'FreehandRoi', tool: cornerstoneTools.FreehandRoiTool },
         { name: 'Probe', tool: cornerstoneTools.ProbeTool }
       ];
@@ -525,7 +522,7 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
             console.log(`DICOM Viewer: Added ${name} tool to element`);
           }
         } catch (toolError) {
-          console.warn(`DICOM Viewer: Failed to add ${name} tool:`, toolError.message);
+          console.warn(`DICOM Viewer: Failed to add ${name} tool:`, toolError instanceof Error ? toolError.message : String(toolError));
         }
       });
 
@@ -538,11 +535,11 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
           cornerstoneTools.setToolModeForElement(element, 'ZoomTool', 'active', { mouseButtonMask: 4 });
           
           // Set measurement and annotation tools to passive
-          ['LengthTool', 'AngleTool', 'RectangleRoiTool', 'EllipticalRoiTool', 'ArrowAnnotateTool', 'TextMarkerTool', 'FreehandRoiTool', 'ProbeTool'].forEach(toolName => {
+          ['LengthTool', 'AngleTool', 'RectangleRoiTool', 'EllipticalRoiTool', 'ArrowAnnotateTool', 'FreehandRoiTool', 'ProbeTool'].forEach(toolName => {
             try {
               cornerstoneTools.setToolModeForElement(element, toolName, 'passive');
             } catch (e) {
-              console.debug(`DICOM Viewer: Could not set ${toolName} to passive:`, e.message);
+              console.debug(`DICOM Viewer: Could not set ${toolName} to passive:`, e instanceof Error ? e.message : String(e));
             }
           });
         } else if (cornerstoneTools.setToolActive) {
@@ -595,7 +592,6 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
         'RectangleRoi': 'RectangleRoiTool',
         'EllipticalRoi': 'EllipticalRoiTool',
         'ArrowAnnotate': 'ArrowAnnotateTool',
-        'TextMarker': 'TextMarkerTool',
         'FreehandRoi': 'FreehandRoiTool',
         'Probe': 'ProbeTool'
       };
@@ -610,7 +606,7 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
           try {
             cornerstoneTools.setToolModeForElement(element, tool, 'passive');
           } catch (toolError) {
-            console.debug('DICOM Viewer: Tool passive warning for', tool, ':', toolError.message);
+            console.debug('DICOM Viewer: Tool passive warning for', tool, ':', toolError instanceof Error ? toolError.message : String(toolError));
           }
         });
 
@@ -834,16 +830,6 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
               className="w-full p-2 text-white hover:bg-gray-700"
               onClick={() => activateTool('ArrowAnnotate')}
               data-testid="tool-annotate"
-            >
-              <Type className="w-4 h-4" />
-            </Button>
-
-            <Button
-              size="sm"
-              variant={activeTool === 'TextMarker' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('TextMarker')}
-              data-testid="tool-text"
             >
               <Type className="w-4 h-4" />
             </Button>
