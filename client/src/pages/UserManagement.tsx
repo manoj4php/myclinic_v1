@@ -11,11 +11,13 @@ import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import AnalyticsCard from "@/components/AnalyticsCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [showAddUser, setShowAddUser] = useState(false);
@@ -200,7 +202,12 @@ export default function UserManagement() {
                                     user.email?.[0]?.toUpperCase() || '?';
                     
                     return (
-                      <tr key={user.id} className="border-b border-border hover:bg-muted/50">
+                      <tr 
+                        key={user.id} 
+                        className="border-b border-border hover:bg-muted/50 cursor-pointer"
+                        onClick={() => setLocation(`/users/${user.id}`)}
+                        data-testid={`user-row-${user.id}`}
+                      >
                         <td className="p-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -239,7 +246,10 @@ export default function UserManagement() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => setEditingUser(user)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingUser(user);
+                                }}
                                 data-testid={`button-edit-user-${user.id}`}
                               >
                                 <i className="fas fa-edit"></i>
@@ -248,12 +258,15 @@ export default function UserManagement() {
                                 variant="ghost" 
                                 size="sm"
                                 className="text-muted-foreground hover:text-foreground"
-                                onClick={() => setChangePasswordUser({
-                                  id: user.id,
-                                  name: user.firstName && user.lastName 
-                                    ? `${user.firstName} ${user.lastName}` 
-                                    : user.email
-                                })}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setChangePasswordUser({
+                                    id: user.id,
+                                    name: user.firstName && user.lastName 
+                                      ? `${user.firstName} ${user.lastName}` 
+                                      : user.email
+                                  });
+                                }}
                               >
                                 <i className="fas fa-key"></i>
                               </Button>
@@ -262,7 +275,10 @@ export default function UserManagement() {
                                   variant="ghost" 
                                   size="sm"
                                   className="text-muted-foreground hover:text-destructive"
-                                  onClick={() => deleteUserMutation.mutate(user.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteUserMutation.mutate(user.id);
+                                  }}
                                   data-testid={`button-delete-user-${user.id}`}
                                 >
                                   <i className="fas fa-trash"></i>

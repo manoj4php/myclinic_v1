@@ -10,6 +10,7 @@ import PatientManagement from "@/pages/PatientManagement";
 import AddPatient from "@/pages/AddPatient";
 import PatientDetails from "@/pages/PatientDetails";
 import UserManagement from "@/pages/UserManagement";
+import UserDetails from "@/pages/UserDetails";
 import Analytics from "@/pages/Analytics";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
@@ -35,6 +36,7 @@ function AuthenticatedLayout() {
           <Route path="/patients/:id" component={PatientDetails} />
           <Route path="/add-patient" component={AddPatient} />
           <Route path="/users" component={UserManagement} />
+          <Route path="/users/:id" component={UserDetails} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/reports" component={Reports} />
           <Route path="/settings" component={Settings} />

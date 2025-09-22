@@ -283,22 +283,32 @@ export default function AddPatient() {
       isLoading={createPatientMutation.isPending}
       message="Creating patient..."
     >
-      <div className="p-6" data-testid="add-patient-view">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-foreground">Add New Patient</h2>
-            <p className="text-muted-foreground">Enter patient information and upload medical files</p>
+      <div className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950 dark:to-gray-900 min-h-screen" data-testid="add-patient-view">
+        <div className="max-w-5xl mx-auto">
+          {/* Professional Header */}
+          <div className="mb-8 text-center">
+            <div className="flex items-center justify-center mb-4">
+              <div className="p-3 bg-blue-600 rounded-full">
+                <i className="fas fa-user-plus text-white text-2xl"></i>
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Patient Registration</h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">Complete patient information form for medical records</p>
+            <div className="w-24 h-1 bg-blue-600 mx-auto mt-4 rounded-full"></div>
           </div>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {/* Personal Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
+            <Card className="shadow-lg border-0 bg-white dark:bg-gray-800">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+                <CardTitle className="flex items-center text-lg">
+                  <i className="fas fa-user mr-3"></i>
+                  Personal Information
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <FormField
                     control={form.control}
                     name="name"
@@ -474,12 +484,15 @@ export default function AddPatient() {
             </Card>
             
             {/* Medical History */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Medical History</CardTitle>
+            <Card className="shadow-lg border-0 bg-white dark:bg-gray-800">
+              <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+                <CardTitle className="flex items-center text-lg">
+                  <i className="fas fa-notes-medical mr-3"></i>
+                  Medical History
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-8">
+                <div className="space-y-6">
                   <FormField
                     control={form.control}
                     name="chiefComplaint"
@@ -707,20 +720,14 @@ export default function AddPatient() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Reported By</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-reported-by">
-                              <SelectValue placeholder="Select reporting doctor" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {doctors?.map((doctor: any) => (
-                              <SelectItem key={doctor.id} value={doctor.id}>
-                                Dr. {doctor.firstName} {doctor.lastName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter reporting doctor's name" 
+                            data-testid="input-reported-by"
+                            {...field}
+                            value={field.value ?? ""} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -776,16 +783,19 @@ export default function AddPatient() {
             </Card>
             
             {/* File Upload Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Medical Files & Reports</CardTitle>
+            <Card className="shadow-lg border-0 bg-white dark:bg-gray-800">
+              <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-t-lg">
+                <CardTitle className="flex items-center text-lg">
+                  <i className="fas fa-file-medical mr-3"></i>
+                  Medical Files & Reports
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
+              <CardContent className="p-8">
+                <div className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors bg-purple-50 dark:bg-purple-900/20">
                   <div className="mb-4">
-                    <i className="fas fa-cloud-upload-alt text-4xl text-muted-foreground"></i>
+                    <i className="fas fa-cloud-upload-alt text-4xl text-purple-600"></i>
                   </div>
-                  <h4 className="text-lg font-medium text-foreground mb-2">Upload Medical Files</h4>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Upload Medical Files</h4>
                   <p className="text-sm text-muted-foreground mb-4">
                     Upload scan images, reports, and other medical documents.<br/>
                     🏥 <strong>DICOM files supported</strong> - Upload .dcm, .dicom files for advanced medical imaging
@@ -846,19 +856,24 @@ export default function AddPatient() {
             </Card>
             
             {/* Form Actions */}
-            <div className="flex items-center justify-end space-x-4">
+            <div className="flex justify-center space-x-6 pt-8 border-t border-gray-200 dark:border-gray-700">
               <Button 
                 type="button" 
                 variant="outline"
+                size="lg"
                 onClick={() => setLocation("/patients")}
                 data-testid="button-cancel"
+                className="px-8 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 dark:text-gray-300"
               >
+                <i className="fas fa-times mr-2"></i>
                 Cancel
               </Button>
               <Button 
                 type="submit"
+                size="lg"
                 disabled={createPatientMutation.isPending}
                 data-testid="button-add-patient-submit"
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-0 shadow-lg"
               >
                 {createPatientMutation.isPending ? (
                   <>
@@ -866,7 +881,10 @@ export default function AddPatient() {
                     Adding Patient...
                   </>
                 ) : (
-                  "Add Patient"
+                  <>
+                    <i className="fas fa-user-plus mr-2"></i>
+                    Add Patient
+                  </>
                 )}
               </Button>
             </div>
