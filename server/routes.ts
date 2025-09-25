@@ -38,12 +38,39 @@ function generateTemporaryPassword(length: number = 12): string {
 }
 
 // Function to check if user is super admin
-const isSuperAdmin = (req: AuthenticatedRequest) => {
-  return req.user?.role === 'super_admin';
+const isSuperAdmin = async (req: AuthenticatedRequest) => {
+  try {
+    const userId = req.user?.claims?.sub || req.user?.id;
+    if (!userId) {
+      return false;
+    }
+    
+    // Try to get user from database to check their role
+    try {
+      const user = await storage.getUser(userId);
+      if (user && user.role === 'super_admin') {
+        return true;
+      }
+    } catch (dbError) {
+      console.warn("Database not available for role check, using fallback for userId:", userId);
+      
+      // Fallback: Check if this is the admin user ID for demo purposes
+      if (userId === "11111111-1111-1111-1111-111111111111") {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Error checking super admin role:", error);
+    return false;
+  }
 };
 
 interface AuthenticatedRequest extends Request {
   user?: {
+    id?: string;
+    email?: string;
     claims?: {
       sub: string;
       email?: string;
@@ -80,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: "admin@myclinic.com",
         firstName: "Admin", 
         lastName: "User",
-        role: "admin",
+        role: "super_admin",
         specialty: "medicines",
         phone: "+1234567890",
         isActive: true,
@@ -1209,7 +1236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/seo-config/:path', isAuthenticated, async (req: AuthenticatedRequest, res) => {
-    if (!isSuperAdmin(req)) {
+    if (!(await isSuperAdmin(req))) {
       return res.status(403).json({ message: "Only super admins can update SEO configurations" });
     }
 
@@ -1225,7 +1252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/seo-configs', isAuthenticated, async (req: AuthenticatedRequest, res) => {
-    if (!isSuperAdmin(req)) {
+    if (!(await isSuperAdmin(req))) {
       return res.status(403).json({ message: "Only super admins can list all SEO configurations" });
     }
 

@@ -4,6 +4,7 @@ import AnalyticsCard from "@/components/AnalyticsCard";
 import { useAuth } from "@/hooks/useAuth";
 import { SEO } from "@/components/SEO";
 import { SEOManager } from "@/components/SEOManager";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -13,11 +14,7 @@ export default function Dashboard() {
   });
 
   const handleSaveSEO = async (config: any) => {
-    await fetch('/api/seo-config/dashboard', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
+    await apiRequest('PUT', '/api/seo-config/dashboard', config);
   };
 
   const { data: dashboardStats } = useQuery({

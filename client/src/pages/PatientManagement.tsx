@@ -36,8 +36,8 @@ import {
   RefreshCw,
   MonitorPlay
 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest as apiReq, queryClient } from "@/lib/queryClient";
 import { EditPatientModal } from "@/components/EditPatientModal";
 import { DICOMViewer } from "@/components/DICOMViewer";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -51,11 +51,7 @@ export default function PatientManagement() {
   });
 
   const handleSaveSEO = async (config: any) => {
-    await fetch('/api/seo-config/patient-management', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
+    await apiReq('PUT', '/api/seo-config/patient-management', config);
   };
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
@@ -75,7 +71,7 @@ export default function PatientManagement() {
   // Delete patient mutation
   const deletePatientMutation = useMutation({
     mutationFn: async (patientId: string) => {
-      await apiRequest("DELETE", `/api/patients/${patientId}`, {});
+      await apiReq("DELETE", `/api/patients/${patientId}`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
@@ -97,7 +93,7 @@ export default function PatientManagement() {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (patientIds: string[]) => {
       await Promise.all(
-        patientIds.map(id => apiRequest("DELETE", `/api/patients/${id}`, {}))
+        patientIds.map(id => apiReq("DELETE", `/api/patients/${id}`, {}))
       );
     },
     onSuccess: () => {
@@ -133,7 +129,7 @@ export default function PatientManagement() {
       if (searchQuery) params.append('search', searchQuery);
       if (selectedSpecialty !== "all") params.append('specialty', selectedSpecialty);
       
-      const response = await apiRequest("GET", `/api/patients?${params.toString()}`);
+      const response = await apiReq("GET", `/api/patients?${params.toString()}`);
       return await response.json();
     },
   });

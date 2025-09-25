@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { defaultSEOConfig, type SEOConfig } from '@/lib/seo-config';
 import { Loader2 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 const PAGE_PATHS = [
   { path: '/dashboard', label: 'Dashboard' },
@@ -47,15 +48,7 @@ export function SEOSettings() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/seo-config${selectedPath}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formState),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save SEO configuration');
-      }
+      await apiRequest('PUT', `/api/seo-config${selectedPath}`, formState);
 
       // Invalidate both the individual config and the list of all configs
       await queryClient.invalidateQueries({ queryKey: ['/api/seo-config', selectedPath] });

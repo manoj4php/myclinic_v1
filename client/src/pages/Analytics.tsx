@@ -7,6 +7,7 @@ import type { DashboardStats, SpecialtyData } from "@/types";
 import { SEO } from "@/components/SEO";
 import { SEOManager } from "@/components/SEOManager";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("all");
@@ -18,11 +19,7 @@ export default function Analytics() {
   });
 
   const handleSaveSEO = async (config: any) => {
-    await fetch('/api/seo-config/analytics', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
+    await apiRequest('PUT', '/api/seo-config/analytics', config);
   };
 
   const { data: dashboardStats } = useQuery<DashboardStats>({

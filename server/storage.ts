@@ -68,6 +68,11 @@ export interface IStorage {
   getTodayPatientCount(): Promise<number>;
   getPendingReportsCount(): Promise<number>;
   getRecentActivity(): Promise<Array<{ type: string; message: string; createdAt: Date }>>;
+  
+  // SEO operations
+  getSEOConfig(path: string): Promise<SEOConfig | undefined>;
+  updateSEOConfig(path: string, config: Partial<SEOConfig>): Promise<void>;
+  getAllSEOConfigs(): Promise<SEOConfig[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -492,24 +497,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSEOConfig(path: string): Promise<SEOConfig | undefined> {
-    const result = await this.db.select().from(seoConfigs).where(eq(seoConfigs.path, path));
-    return result[0];
+    try {
+      const result = await db.select().from(seoConfigs).where(eq(seoConfigs.path, path));
+      return result[0] || undefined;
+    } catch (error) {
+      console.error('Error fetching SEO config:', error);
+      return undefined;
+    }
   }
 
   async updateSEOConfig(path: string, config: Partial<SEOConfig>): Promise<void> {
-    const existing = await this.getSEOConfig(path);
-    if (existing) {
-      await this.db
-        .update(seoConfigs)
-        .set({ ...config, updatedAt: new Date() })
-        .where(eq(seoConfigs.path, path));
-    } else {
-      await this.db.insert(seoConfigs).values({ ...config, path });
+    try {
+      const existing = await this.getSEOConfig(path);
+      if (existing) {
+        await db
+          .update(seoConfigs)
+          .set({ ...config, updatedAt: new Date() })
+          .where(eq(seoConfigs.path, path));
+      } else {
+        await db.insert(seoConfigs).values({ ...config, path });
+      }
+    } catch (error) {
+      console.error('Error updating SEO config:', error);
+      throw error;
     }
   }
 
   async getAllSEOConfigs(): Promise<SEOConfig[]> {
-    return await this.db.select().from(seoConfigs);
+    try {
+      return await db.select().from(seoConfigs);
+    } catch (error) {
+      console.error('Error fetching all SEO configs:', error);
+      return [];
+    }
   }
 }
 
