@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { exportToExcel } from "@/lib/exportUtils";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { Download } from "lucide-react";
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
@@ -72,6 +74,29 @@ export default function UserManagement() {
   const handleRoleChange = (newRole: string) => {
     setSelectedRole(newRole);
     setCurrentPage(1);
+  };
+
+  const handleExport = () => {
+    if (!usersResponse?.data?.length) return;
+    
+    // Prepare data for export
+    const exportData = usersResponse.data.map((user: any) => ({
+      'User ID': user.id,
+      'Name': user.name,
+      'Email': user.email,
+      'Role': user.role,
+      'Specialty': user.specialty || 'N/A',
+      'Status': user.isActive ? 'Active' : 'Inactive',
+      'Created Date': new Date(user.createdAt).toLocaleDateString(),
+      'Last Updated': new Date(user.updatedAt).toLocaleDateString()
+    }));
+
+    exportToExcel({
+      data: exportData,
+      filename: `users-list-${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Users',
+      dateFields: ['Created Date', 'Last Updated']
+    });
   };
 
   // Since filtering is now handled by backend, we use the returned users directly
@@ -187,6 +212,16 @@ export default function UserManagement() {
           <div className="flex items-center justify-between">
             <CardTitle>All Users</CardTitle>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                className="flex items-center space-x-2"
+                data-testid="button-export-users"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export to Excel</span>
+              </Button>
               <Input
                 type="text"
                 placeholder="Search users..."

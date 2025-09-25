@@ -8,7 +8,14 @@ import type { User, Notification } from "@/types";
 import { ClinicLogo, ClinicLogoText } from "@/components/Logo";
 import { logout } from "@/lib/authUtils";
 
-const navigationItems = [
+interface NavigationItem {
+  path: string;
+  label: string;
+  icon: string;
+  requiredRole?: string;
+}
+
+const navigationItems: NavigationItem[] = [
   { path: "/", label: "Dashboard", icon: "fa-chart-pie" },
   { path: "/patients", label: "Patients", icon: "fa-users" },
   { path: "/add-patient", label: "Add Patient", icon: "fa-user-plus" },
@@ -17,6 +24,7 @@ const navigationItems = [
   { path: "/analytics", label: "Analytics", icon: "fa-chart-bar" },
   { path: "/users", label: "User Management", icon: "fa-user-cog" },
   { path: "/settings", label: "Settings", icon: "fa-cog" },
+  { path: "/seo-settings", label: "SEO Settings", icon: "fa-search", requiredRole: "super_admin" },
 ];
 
 // Create sidebar context
@@ -114,6 +122,11 @@ export default function Sidebar() {
       
       <nav className="p-4 space-y-2">
         {navigationItems.map((item) => {
+          // Skip items that require specific roles if user doesn't have them
+          if (item.requiredRole && user?.role !== item.requiredRole) {
+            return null;
+          }
+          
           const isActive = location === item.path;
           const showNotificationBadge = item.path === "/notifications" && unreadNotifications > 0;
           

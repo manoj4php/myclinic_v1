@@ -4,10 +4,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AnalyticsCard from "@/components/AnalyticsCard";
 import { useState } from "react";
 import type { DashboardStats, SpecialtyData } from "@/types";
+import { SEO } from "@/components/SEO";
+import { SEOManager } from "@/components/SEOManager";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("all");
   const [specialty, setSpecialty] = useState("all");
+  const { user } = useAuth();
+
+  const { data: seoConfig } = useQuery({
+    queryKey: ["/api/seo-config/analytics"],
+  });
+
+  const handleSaveSEO = async (config: any) => {
+    await fetch('/api/seo-config/analytics', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+  };
 
   const { data: dashboardStats } = useQuery<DashboardStats>({
     queryKey: ["/api/analytics/dashboard-stats"],
@@ -35,6 +51,13 @@ export default function Analytics() {
 
   return (
     <div className="p-6" data-testid="analytics-view">
+      <SEO
+        title={seoConfig?.title || 'Analytics - ClinicConnect'}
+        description={seoConfig?.description || 'View detailed analytics and insights for your clinical practice'}
+        path="/analytics"
+        {...seoConfig}
+      />
+
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground">Analytics Dashboard</h2>
         <p className="text-muted-foreground">Detailed insights and analytics for your clinic</p>

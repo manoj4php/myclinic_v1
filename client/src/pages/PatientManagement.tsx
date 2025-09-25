@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueries } from "@tanstack/react-query";
+import { SEO } from "@/components/SEO";
+import { SEOManager } from "@/components/SEOManager";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
+import { exportToExcel } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +44,19 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 
 export default function PatientManagement() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+
+  const { data: seoConfig } = useQuery({
+    queryKey: ["/api/seo-config/patient-management"],
+  });
+
+  const handleSaveSEO = async (config: any) => {
+    await fetch('/api/seo-config/patient-management', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -164,6 +181,39 @@ export default function PatientManagement() {
     setSelectedSpecialty(newSpecialty);
     setCurrentPage(1);
     setSelectedPatients([]);
+  };
+
+  const handleExport = () => {
+    if (!filteredPatients?.length) return;
+    
+    // Prepare data for export
+    const exportData = filteredPatients.map((patient: any) => ({
+      'Patient ID': patient.id,
+      'Name': patient.name,
+      'Email': patient.email,
+      'Phone': patient.phone,
+      'Emergency': patient.emergency ? 'Yes' : 'No',
+      'Report Status': patient.reportStatus || 'pending',
+      'Age': getAge(patient.dateOfBirth),
+      'Gender': patient.gender,
+      'Study Date': new Date(patient.createdAt).toLocaleDateString(),
+      'Study Time': patient.studyTime || 'Not set',
+      'Accession': patient.accession || 'Not assigned',
+      'Study Description': patient.studyDesc || 'Not specified',
+      'Modality': patient.modality || 'Not specified',
+      'Files Count': patient.fileCount || 0,
+      'Center': patient.center || 'Not specified',
+      'Referred By': patient.refBy || 'Not specified',
+      'Is Printed': patient.isPrinted ? 'Yes' : 'No',
+      'Reported By': patient.reportedBy || 'Not reported'
+    }));
+
+    exportToExcel({
+      data: exportData,
+      filename: `patients-list-page${currentPage}-${new Date().toISOString().split('T')[0]}`,
+      sheetName: `Patients Page ${currentPage}`,
+      dateFields: ['Study Date']
+    });
   };
 
   // DICOM file detection and handling functions
@@ -339,6 +389,13 @@ export default function PatientManagement() {
 
   return (
     <div className="p-6 bg-gradient-to-br from-blue-50/50 to-white min-h-screen" data-testid="patients-view">
+      <SEO
+        title={seoConfig?.title || 'Patient Management - ClinicConnect'}
+        description={seoConfig?.description || 'Manage and view patient records, medical studies, and clinical data'}
+        path="/patient-management"
+        {...seoConfig}
+      />
+
       {/* Header Section */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
@@ -364,6 +421,16 @@ export default function PatientManagement() {
             >
               <RefreshCw className="w-4 h-4" />
               <span>Refresh</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="flex items-center space-x-2"
+              data-testid="button-export-patients"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export to Excel</span>
             </Button>
             <Button 
               onClick={() => setLocation("/add-patient")}
@@ -505,12 +572,12 @@ export default function PatientManagement() {
                   <TableHead className="font-semibold text-blue-900">Sex</TableHead>
                   <TableHead className="font-semibold text-blue-900">Study Date</TableHead>
                   <TableHead className="font-semibold text-blue-900">Study Time</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Ref by</TableHead>
                   <TableHead className="font-semibold text-blue-900">Accession</TableHead>
                   <TableHead className="font-semibold text-blue-900">Study Desc</TableHead>
                   <TableHead className="font-semibold text-blue-900">Modality</TableHead>
                   <TableHead className="font-semibold text-blue-900">Images</TableHead>
                   <TableHead className="font-semibold text-blue-900">Center</TableHead>
-                  <TableHead className="font-semibold text-blue-900">Ref by</TableHead>
                   <TableHead className="font-semibold text-blue-900">Is Printed</TableHead>
                   <TableHead className="font-semibold text-blue-900">Reported by</TableHead>
                 </TableRow>
@@ -537,8 +604,8 @@ export default function PatientManagement() {
                         />
                       </TableCell>
                       
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
+                      <TableCell className="px-2 py-1">
+                        <div className="flex items-center space-x-0.5">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -548,6 +615,7 @@ export default function PatientManagement() {
                             }}
                             data-testid={`button-view-${patient.id}`}
                             title="View Patient Details"
+                            className="h-7 w-7 p-0"
                           >
                             <Eye className="w-4 h-4 text-blue-600" />
                           </Button>
@@ -563,7 +631,7 @@ export default function PatientManagement() {
                               }}
                               data-testid={`button-dicom-${patient.id}`}
                               title={`View DICOM Files (${getDICOMFilesForPatient(patient).length})`}
-                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                              className="h-7 w-7 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                             >
                               <MonitorPlay className="w-4 h-4" />
                             </Button>
@@ -575,6 +643,7 @@ export default function PatientManagement() {
                                 size="sm"
                                 variant="ghost"
                                 data-testid={`button-edit-${patient.id}`}
+                                className="h-7 w-7 p-0"
                               >
                                 <Edit className="w-4 h-4 text-green-600" />
                               </Button>
@@ -590,6 +659,7 @@ export default function PatientManagement() {
                             disabled={deletePatientMutation.isPending}
                             data-testid={`button-delete-${patient.id}`}
                             title="Deactivate patient (soft delete)"
+                            className="h-7 w-7 p-0"
                           >
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </Button>
@@ -644,7 +714,13 @@ export default function PatientManagement() {
 
                       <TableCell>
                         <div className="text-sm text-gray-600">
-                          {patient.studyTime || 'Not set'}
+                          {patient.studyTime ? new Date(`2000-01-01T${patient.studyTime}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : 'Not set'}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {patient.refBy || 'Not specified'}
                         </div>
                       </TableCell>
 
@@ -715,12 +791,6 @@ export default function PatientManagement() {
                       <TableCell>
                         <div className="text-sm text-gray-600">
                           {patient.center || 'Not specified'}
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="text-sm text-gray-600">
-                          {patient.refBy || 'Not specified'}
                         </div>
                       </TableCell>
 

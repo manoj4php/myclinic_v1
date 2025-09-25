@@ -19,6 +19,7 @@ export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("profile");
   const queryClient = useQueryClient();
 
   const form = useForm({
@@ -117,12 +118,15 @@ export default function Settings() {
         <p className="text-muted-foreground">Manage your account and system preferences</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" data-testid="tab-profile">Profile</TabsTrigger>
           <TabsTrigger value="notifications" data-testid="tab-notifications">Notifications</TabsTrigger>
           <TabsTrigger value="system" data-testid="tab-system">System</TabsTrigger>
           <TabsTrigger value="security" data-testid="tab-security">Security</TabsTrigger>
+          {user?.role === 'super_admin' && (
+            <TabsTrigger value="seo" data-testid="tab-seo">SEO</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile">
@@ -298,6 +302,8 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+
 
         <TabsContent value="system">
           <Card>

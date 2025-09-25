@@ -2,9 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AnalyticsCard from "@/components/AnalyticsCard";
 import { useAuth } from "@/hooks/useAuth";
+import { SEO } from "@/components/SEO";
+import { SEOManager } from "@/components/SEOManager";
 
 export default function Dashboard() {
   const { user } = useAuth();
+
+  const { data: seoConfig } = useQuery({
+    queryKey: ["/api/seo-config/dashboard"],
+  });
+
+  const handleSaveSEO = async (config: any) => {
+    await fetch('/api/seo-config/dashboard', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+  };
 
   const { data: dashboardStats } = useQuery({
     queryKey: ["/api/analytics/dashboard-stats"],
@@ -40,6 +54,13 @@ export default function Dashboard() {
 
   return (
     <div className="p-6" data-testid="dashboard-view">
+      <SEO
+        title={seoConfig?.title || 'Dashboard - ClinicConnect'}
+        description={seoConfig?.description || 'Your clinical practice dashboard showing patient statistics and recent activity'}
+        path="/dashboard"
+        {...seoConfig}
+      />
+
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <AnalyticsCard

@@ -8,6 +8,7 @@ import {
   varchar,
   text,
   boolean,
+  serial,
   integer,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -239,3 +240,25 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 export type PatientArchive = typeof patientArchive.$inferSelect;
+
+export const seoConfigs = pgTable('seo_configs', {
+  id: serial('id').primaryKey(),
+  path: varchar('path', { length: 255 }).notNull().unique(),
+  title: varchar('title', { length: 255 }),
+  description: text('description'),
+  canonicalUrl: varchar('canonical_url', { length: 512 }),
+  ogTitle: varchar('og_title', { length: 255 }),
+  ogDescription: text('og_description'),
+  ogImage: varchar('og_image', { length: 512 }),
+  ogUrl: varchar('og_url', { length: 512 }),
+  twitterCard: varchar('twitter_card', { length: 50 }),
+  twitterCreator: varchar('twitter_creator', { length: 255 }),
+  twitterSite: varchar('twitter_site', { length: 255 }),
+  twitterImage: varchar('twitter_image', { length: 512 }),
+  noIndex: boolean('no_index').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type SEOConfig = typeof seoConfigs.$inferSelect;
+export type InsertSEOConfig = typeof seoConfigs.$inferInsert;

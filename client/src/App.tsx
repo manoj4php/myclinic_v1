@@ -14,6 +14,7 @@ import UserDetails from "@/pages/UserDetails";
 import Analytics from "@/pages/Analytics";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import SEOSettings from "@/pages/SEOSettings";
 import Notifications from "@/pages/Notifications";
 import ChangePassword from "@/pages/ChangePassword";
 import NotFound from "@/pages/not-found";
@@ -40,6 +41,7 @@ function AuthenticatedLayout() {
           <Route path="/analytics" component={Analytics} />
           <Route path="/reports" component={Reports} />
           <Route path="/settings" component={Settings} />
+          <Route path="/seo-settings" component={SEOSettings} />
           <Route path="/notifications" component={Notifications} />
           <Route path="/change-password" component={() => <ChangePassword userId={user?.id} />} />
           <Route component={NotFound} />

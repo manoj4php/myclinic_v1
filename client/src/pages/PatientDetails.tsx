@@ -351,106 +351,6 @@ export default function PatientDetails() {
               )}
             </CardContent>
           </Card>
-
-          {/* Study Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Stethoscope className="w-5 h-5 mr-2" />
-                Study Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  {(patient as any).accession && (
-                    <div data-testid="info-accession">
-                      <p className="text-sm text-muted-foreground">Accession Number</p>
-                      <p className="font-medium">{(patient as any).accession}</p>
-                    </div>
-                  )}
-                  
-                  {(patient as any).modality && (
-                    <div data-testid="info-modality">
-                      <p className="text-sm text-muted-foreground">Modality</p>
-                      <p className="font-medium">{(patient as any).modality}</p>
-                    </div>
-                  )}
-                  
-                  {(patient as any).center && (
-                    <div data-testid="info-center">
-                      <p className="text-sm text-muted-foreground">Medical Center</p>
-                      <p className="font-medium">{(patient as any).center}</p>
-                    </div>
-                  )}
-                  
-                  {(patient as any).refBy && (
-                    <div data-testid="info-referred-by">
-                      <p className="text-sm text-muted-foreground">Referred By</p>
-                      <p className="font-medium">{(patient as any).refBy}</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-4">
-                  {(patient as any).studyDate && (
-                    <div data-testid="info-study-date">
-                      <p className="text-sm text-muted-foreground">Study Date</p>
-                      <p className="font-medium">{new Date((patient as any).studyDate).toLocaleDateString()}</p>
-                    </div>
-                  )}
-                  
-                  {(patient as any).studyTime && (
-                    <div data-testid="info-study-time">
-                      <p className="text-sm text-muted-foreground">Study Time</p>
-                      <p className="font-medium">{(patient as any).studyTime}</p>
-                    </div>
-                  )}
-                  
-                  {(patient as any).reportedBy && (
-                    <div data-testid="info-reported-by">
-                      <p className="text-sm text-muted-foreground">Reported By</p>
-                      <p className="font-medium">{(patient as any).reportedBy}</p>
-                    </div>
-                  )}
-                  
-                  <div data-testid="info-report-status">
-                    <p className="text-sm text-muted-foreground">Report Status</p>
-                    <Badge 
-                      className={`${
-                        (patient as any).reportStatus === 'completed' ? 'bg-green-100 text-green-800' :
-                        (patient as any).reportStatus === 'reviewed' ? 'bg-blue-100 text-blue-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {(patient as any).reportStatus?.charAt(0).toUpperCase() + (patient as any).reportStatus?.slice(1) || 'Pending'}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              
-              {(patient as any).studyDesc && (
-                <div className="mt-4" data-testid="info-study-description">
-                  <p className="text-sm text-muted-foreground mb-2">Study Description</p>
-                  <p className="text-muted-foreground bg-muted p-3 rounded-md">{(patient as any).studyDesc}</p>
-                </div>
-              )}
-              
-              <div className="mt-4 flex items-center space-x-4">
-                {(patient as any).emergency && (
-                  <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" data-testid="badge-emergency">
-                    Emergency Case
-                  </Badge>
-                )}
-                
-                {(patient as any).isPrinted && (
-                  <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300" data-testid="badge-printed">
-                    Printed
-                  </Badge>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Files & Upload Section */}
@@ -466,12 +366,7 @@ export default function PatientDetails() {
                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">Radiology</Badge>
                   )}
                 </span>
-                {Array.isArray(patientFiles) && patientFiles.some((file: any) => isDICOMFile(file.fileName)) && (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                    <MonitorPlay className="w-3 h-3 mr-1" />
-                    DICOM Available
-                  </Badge>
-                )}
+                {/* Removed DICOM Available badge */}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -505,28 +400,19 @@ export default function PatientDetails() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          variant={isDICOMFile(file.fileName) ? "default" : "outline"}
-                          onClick={() => openFileViewer(file)}
-                          className={`flex items-center space-x-1 ${isDICOMFile(file.fileName) ? 'bg-blue-600 hover:bg-blue-700 text-white' : isRadiologyImage(file.fileName) ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                          data-testid={`button-view-file-${file.id}`}
-                        >
-                          {isDICOMFile(file.fileName) ? (
-                            <MonitorPlay className="w-4 h-4" />
-                          ) : isRadiologyImage(file.fileName) ? (
-                            <MonitorPlay className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                          <span>
-                            {isDICOMFile(file.fileName) 
-                              ? 'Open DICOM' 
-                              : isRadiologyImage(file.fileName) 
-                              ? 'Medical Viewer' 
-                              : 'View'}
-                          </span>
-                        </Button>
+                        {!isDICOMFile(file.fileName) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openFileViewer(file)}
+                            className={`flex items-center space-x-1 ${isRadiologyImage(file.fileName) ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                            data-testid={`button-view-file-${file.id}`}
+                          >
+                            <span>
+                              {isRadiologyImage(file.fileName) ? 'Medical Viewer' : 'View'}
+                            </span>
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

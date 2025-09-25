@@ -37,6 +37,11 @@ function generateTemporaryPassword(length: number = 12): string {
   return password.split('').sort(() => Math.random() - 0.5).join('');
 }
 
+// Function to check if user is super admin
+const isSuperAdmin = (req: AuthenticatedRequest) => {
+  return req.user?.role === 'super_admin';
+};
+
 interface AuthenticatedRequest extends Request {
   user?: {
     claims?: {
@@ -1188,6 +1193,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking notification as read:", error);
       res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // SEO Configuration Routes
+  app.get('/api/seo-config/:path', async (req, res) => {
+    try {
+      const { path } = req.params;
+      const config = await storage.getSEOConfig(path);
+      res.json(config || {});
+    } catch (error) {
+      console.error("Error fetching SEO config:", error);
+      res.status(500).json({ message: "Failed to fetch SEO configuration" });
+    }
+  });
+
+  app.put('/api/seo-config/:path', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({ message: "Only super admins can update SEO configurations" });
+    }
+
+    try {
+      const { path } = req.params;
+      const config = req.body;
+      await storage.updateSEOConfig(path, config);
+      res.json({ message: "SEO configuration updated successfully" });
+    } catch (error) {
+      console.error("Error updating SEO config:", error);
+      res.status(500).json({ message: "Failed to update SEO configuration" });
+    }
+  });
+
+  app.get('/api/seo-configs', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({ message: "Only super admins can list all SEO configurations" });
+    }
+
+    try {
+      const configs = await storage.getAllSEOConfigs();
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching SEO configs:", error);
+      res.status(500).json({ message: "Failed to fetch SEO configurations" });
     }
   });
 

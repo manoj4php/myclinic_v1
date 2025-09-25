@@ -5,9 +5,11 @@ import {
   userPermissions,
   notifications,
   patientArchive,
+  seoConfigs,
   type User,
   type UpsertUser,
   type Patient,
+  type SEOConfig,
   type InsertPatient,
   type PatientFile,
   type InsertPatientFile,
@@ -487,6 +489,27 @@ export class DatabaseStorage implements IStorage {
       message: r.message,
       createdAt: r.createdAt!,
     }));
+  }
+
+  async getSEOConfig(path: string): Promise<SEOConfig | undefined> {
+    const result = await this.db.select().from(seoConfigs).where(eq(seoConfigs.path, path));
+    return result[0];
+  }
+
+  async updateSEOConfig(path: string, config: Partial<SEOConfig>): Promise<void> {
+    const existing = await this.getSEOConfig(path);
+    if (existing) {
+      await this.db
+        .update(seoConfigs)
+        .set({ ...config, updatedAt: new Date() })
+        .where(eq(seoConfigs.path, path));
+    } else {
+      await this.db.insert(seoConfigs).values({ ...config, path });
+    }
+  }
+
+  async getAllSEOConfigs(): Promise<SEOConfig[]> {
+    return await this.db.select().from(seoConfigs);
   }
 }
 
