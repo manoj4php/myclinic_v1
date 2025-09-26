@@ -34,7 +34,8 @@ import {
   Search,
   Filter,
   RefreshCw,
-  MonitorPlay
+  MonitorPlay,
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest as apiReq, queryClient } from "@/lib/queryClient";
@@ -190,6 +191,7 @@ export default function PatientManagement() {
       'Phone': patient.phone,
       'Emergency': patient.emergency ? 'Yes' : 'No',
       'Report Status': patient.reportStatus || 'pending',
+      'Reported Type': patient.reportedType || patient.specialty || 'general',
       'Age': getAge(patient.dateOfBirth),
       'Gender': patient.gender,
       'Study Date': new Date(patient.createdAt).toLocaleDateString(),
@@ -562,6 +564,7 @@ export default function PatientManagement() {
                   <TableHead className="font-semibold text-blue-900">Action</TableHead>
                   <TableHead className="font-semibold text-blue-900">Emergency</TableHead>
                   <TableHead className="font-semibold text-blue-900">Report Status</TableHead>
+                  <TableHead className="font-semibold text-blue-900">Reported Type</TableHead>
                   <TableHead className="font-semibold text-blue-900">Patient Id</TableHead>
                   <TableHead className="font-semibold text-blue-900">Patient Name</TableHead>
                   <TableHead className="font-semibold text-blue-900">Age</TableHead>
@@ -616,6 +619,22 @@ export default function PatientManagement() {
                             <Eye className="w-4 h-4 text-blue-600" />
                           </Button>
                           
+                          {/* Patient History Button */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // For now, navigate to patient details. Can be modified to open history modal later
+                              setLocation(`/patients/${patient.id}/history`);
+                            }}
+                            data-testid={`button-history-${patient.id}`}
+                            title="View Patient History"
+                            className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <History className="w-4 h-4" />
+                          </Button>
+                          
                           {/* DICOM Viewer Button - only show if patient has DICOM files */}
                           {getDICOMFilesForPatient(patient).length > 0 && (
                             <Button
@@ -664,7 +683,7 @@ export default function PatientManagement() {
 
                       <TableCell>
                         {patient.emergency ? (
-                          <Badge className="bg-red-100 text-red-800 border-red-200">
+                          <Badge className="bg-red-500 text-white border-red-600 font-medium">
                             Emergency
                           </Badge>
                         ) : (
@@ -681,6 +700,12 @@ export default function PatientManagement() {
                           } capitalize`}
                         >
                           {patient.reportStatus || 'pending'}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 border-green-200 capitalize">
+                          {patient.reportedType || patient.specialty || 'general'}
                         </Badge>
                       </TableCell>
 
@@ -809,7 +834,7 @@ export default function PatientManagement() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={18} className="text-center py-12">
+                    <TableCell colSpan={19} className="text-center py-12">
                       <div className="flex flex-col items-center space-y-3 text-gray-500">
                         <FileText className="w-12 h-12" />
                         <div className="text-lg font-medium">No patients found</div>
