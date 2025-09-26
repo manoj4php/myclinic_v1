@@ -7,7 +7,7 @@ export interface User {
   username: string | null;
   phone: string | null;
   address: string | null;
-  role: "super_admin" | "admin" | "user" | null;
+  role: "super_admin" | "doctor" | "technician" | null;
   specialty: "radiology" | "pediatric" | "gynac" | "medicines" | "surgeon" | null;
   isActive: boolean | null;
   emailNotifications: boolean | null;

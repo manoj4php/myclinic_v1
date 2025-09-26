@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { withPermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -24,7 +25,7 @@ const formSchema = insertPatientSchema.extend({
   dateOfBirth: true,
 });
 
-export default function AddPatient() {
+function AddPatient() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
@@ -888,3 +889,9 @@ export default function AddPatient() {
     </LoadingOverlay>
   );
 }
+
+export default withPermissions(AddPatient, {
+  menu: 'patients',
+  module: 'patients',
+  action: 'add'
+});

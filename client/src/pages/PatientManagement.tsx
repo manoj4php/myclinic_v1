@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueries } from "@tanstack/react-query";
 import { SEO } from "@/components/SEO";
 import { SEOManager } from "@/components/SEOManager";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions, PermissionGate } from "@/hooks/usePermissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { exportToExcel } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 export default function PatientManagement() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { canPerformAction } = usePermissions();
 
   const { data: seoConfig } = useQuery({
     queryKey: ["/api/seo-config/patient-management"],
@@ -420,24 +422,28 @@ export default function PatientManagement() {
               <RefreshCw className="w-4 h-4" />
               <span>Refresh</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              className="flex items-center space-x-2"
-              data-testid="button-export-patients"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export to Excel</span>
-            </Button>
-            <Button 
-              onClick={() => setLocation("/add-patient")}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
-              data-testid="button-add-patient"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Patient</span>
-            </Button>
+            <PermissionGate module="patients" action="export">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                className="flex items-center space-x-2"
+                data-testid="button-export-patients"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export to Excel</span>
+              </Button>
+            </PermissionGate>
+            <PermissionGate module="patients" action="add">
+              <Button 
+                onClick={() => setLocation("/add-patient")}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
+                data-testid="button-add-patient"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Patient</span>
+              </Button>
+            </PermissionGate>
           </div>
         </div>
       </div>
@@ -523,18 +529,20 @@ export default function PatientManagement() {
             </Button>
 
             {selectedPatients.length > 0 && (
-              <Button 
-                variant="outline" 
-                className="flex items-center space-x-2 text-red-600 border-red-200 hover:bg-red-50"
-                onClick={handleBulkDelete}
-                disabled={bulkDeleteMutation.isPending}
-                data-testid="button-bulk-delete"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>
+              <PermissionGate module="patients" action="delete">
+                <Button 
+                  variant="outline" 
+                  className="flex items-center space-x-2 text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleteMutation.isPending}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>
                   {bulkDeleteMutation.isPending ? 'Deactivating...' : `Delete (${selectedPatients.length})`}
                 </span>
               </Button>
+              </PermissionGate>
             )}
           </div>
         </CardContent>
@@ -651,33 +659,37 @@ export default function PatientManagement() {
                               <MonitorPlay className="w-4 h-4" />
                             </Button>
                           )}
-                          <EditPatientModal
-                            patient={patient}
-                            trigger={
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                data-testid={`button-edit-${patient.id}`}
-                                className="h-7 w-7 p-0"
-                              >
-                                <Edit className="w-4 h-4 text-green-600" />
-                              </Button>
-                            }
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePatient(patient.id, patient.name);
-                            }}
-                            disabled={deletePatientMutation.isPending}
-                            data-testid={`button-delete-${patient.id}`}
-                            title="Deactivate patient (soft delete)"
-                            className="h-7 w-7 p-0"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
+                          <PermissionGate module="patients" action="edit">
+                            <EditPatientModal
+                              patient={patient}
+                              trigger={
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  data-testid={`button-edit-${patient.id}`}
+                                  className="h-7 w-7 p-0"
+                                >
+                                  <Edit className="w-4 h-4 text-green-600" />
+                                </Button>
+                              }
+                            />
+                          </PermissionGate>
+                          <PermissionGate module="patients" action="delete">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePatient(patient.id, patient.name);
+                              }}
+                              disabled={deletePatientMutation.isPending}
+                              data-testid={`button-delete-${patient.id}`}
+                              title="Deactivate patient (soft delete)"
+                              className="h-7 w-7 p-0"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </PermissionGate>
                         </div>
                       </TableCell>
 

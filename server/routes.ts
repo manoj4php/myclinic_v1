@@ -5,6 +5,14 @@ import * as path from "path";
 import * as crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hashPassword } from "./replitAuth";
+import { 
+  PatientPermissions, 
+  UserPermissions, 
+  AnalyticsPermissions,
+  requireSuperAdmin,
+  requireValidRole,
+  getUserPermissions
+} from "./permissions";
 import { getFileStorageProvider } from "./fileStorage";
 import { ObjectPermission } from "./objectAcl";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -123,6 +131,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User permissions endpoint
+  app.get('/api/auth/permissions', isAuthenticated, requireValidRole, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+
+      let userRole = 'super_admin'; // default fallback
+
+      // Try to get user role from database
+      try {
+        const user = await storage.getUser(userId);
+        if (user?.role) {
+          userRole = user.role as any;
+        }
+      } catch (dbError) {
+        console.warn("Database not available for permissions check, using default role");
+      }
+
+      const permissions = getUserPermissions(userRole as any);
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "Failed to fetch permissions" });
+    }
+  });
+
   // Logout endpoint
   app.post('/api/auth/logout', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
@@ -161,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: 'Admin',
         lastName: 'User',
         username: 'admin',
-        role: 'admin',
+        role: 'super_admin',
         specialty: 'medicines',
         isActive: true,
         emailNotifications: true,
@@ -688,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const currentUser = await storage.getUser(userId);
-      if (id !== userId && currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+      if (id !== userId && currentUser?.role !== 'super_admin') {
         return res.status(403).json({ message: "Unauthorized to change this password" });
       }
 
@@ -738,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Patient Management Routes
-  app.get('/api/patients', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/patients', isAuthenticated, PatientPermissions.view, async (req: AuthenticatedRequest, res) => {
     try {
       const { 
         specialty, 
@@ -834,7 +870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patients/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/patients/:id', isAuthenticated, PatientPermissions.view, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       
@@ -896,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/patients', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/patients', isAuthenticated, PatientPermissions.add, async (req: AuthenticatedRequest, res) => {
     try {
       const createdBy = req.user?.claims?.sub;
       const ipAddress = req.ip;
@@ -981,7 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/patients/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.put('/api/patients/:id', isAuthenticated, PatientPermissions.edit, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -1024,7 +1060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/patients/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.delete('/api/patients/:id', isAuthenticated, PatientPermissions.delete, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       await storage.deletePatient(id);
@@ -1036,7 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Patient Files Routes
-  app.get('/api/patients/:id/files', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/patients/:id/files', isAuthenticated, PatientPermissions.view, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       

@@ -31,7 +31,7 @@ function AuthenticatedLayout() {
       <Sidebar />
       <div className={`min-h-screen transition-all duration-300 ${
         isCollapsed 
-          ? 'md:ml-16' 
+          ? 'md:ml-[4.5rem]' 
           : 'md:ml-64'
       }`}>
         <Header />

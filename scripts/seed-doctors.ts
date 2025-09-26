@@ -124,7 +124,7 @@ async function seedDoctors() {
           phone: doctorData.phone,
           address: doctorData.address,
           specialty: doctorData.specialty,
-          role: "user", // Doctor role
+          role: "doctor", // Doctor role
           isActive: true,
           emailNotifications: true,
           password: hashedPassword, // Use 'password' instead of 'hashedPassword'

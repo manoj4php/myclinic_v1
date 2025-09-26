@@ -16,7 +16,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const roleEnum = pgEnum("role", ["super_admin", "admin", "user"]);
+export const roleEnum = pgEnum("role", ["super_admin", "doctor", "technician"]);
 export const specialtyEnum = pgEnum("specialty", ["radiology", "pediatric", "gynac", "medicines", "surgeon"]);
 export const genderEnum = pgEnum("gender", ["male", "female", "other"]);
 export const permissionEnum = pgEnum("permission", ["add", "edit", "delete", "view"]);
@@ -43,7 +43,7 @@ export const users = pgTable("users", {
   username: varchar("username").unique(),
   phone: varchar("phone"),
   address: text("address"),
-  role: roleEnum("role").default("user"),
+  role: roleEnum("role").default("technician"),
   specialty: specialtyEnum("specialty"),
   isActive: boolean("is_active").default(true),
   emailNotifications: boolean("email_notifications").default(true),
