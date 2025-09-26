@@ -29,7 +29,11 @@ function AuthenticatedLayout() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className={`min-h-screen transition-all duration-300 ${isCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div className={`min-h-screen transition-all duration-300 ${
+        isCollapsed 
+          ? 'md:ml-16' 
+          : 'md:ml-64'
+      }`}>
         <Header />
         <Switch>
           <Route path="/" component={Dashboard} />
