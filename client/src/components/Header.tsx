@@ -1,6 +1,11 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useSidebar } from "@/components/Sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationDropdown from "@/components/NotificationDropdown";
+import { logout } from "@/lib/authUtils";
+import { Button } from "@/components/ui/button";
+import { Menu } from "lucide-react";
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   "/": { title: "Dashboard", subtitle: "Welcome back" },
@@ -16,6 +21,8 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
 export default function Header() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { toggleSidebar } = useSidebar();
+  const isMobile = useIsMobile();
 
   const pageInfo = pageTitles[location] || { title: "Dashboard", subtitle: "Welcome back" };
   
@@ -28,39 +35,74 @@ export default function Header() {
     return (user as any)?.email || 'User';
   };
 
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const getFormattedDate = () => {
+    const now = new Date();
+    const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const month = now.toLocaleDateString('en-US', { month: 'long' });
+    const day = now.getDate();
+    const year = now.getFullYear();
+    return `${dayName} ${month} ${day}, ${year}`;
+  };
 
-  const currentTime = new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
-    <header className="bg-card border-b border-border px-6 py-4">
+    <header className="bg-card border-b border-border px-4 py-4 md:px-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{pageInfo.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {pageInfo.subtitle}, {getDisplayName()}
-          </p>
+        <div className="flex items-center space-x-3">
+          {/* Mobile menu button */}
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSidebar}
+              className="md:hidden"
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">{pageInfo.title}</h1>
+            <p className="text-sm text-muted-foreground">
+              {pageInfo.subtitle}, {getDisplayName()}
+            </p>
+          </div>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 md:space-x-4">
           <NotificationDropdown />
           
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <i className="fas fa-calendar"></i>
-            <span data-testid="current-date">{currentDate}</span>
+          {/* Welcome message with logout - hidden on mobile */}
+          <div className="hidden lg:flex items-center space-x-3 text-sm">
+            <span className="text-foreground">
+              Welcome {getDisplayName()}, today is {getFormattedDate()}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-foreground"
+              data-testid="header-logout-button"
+            >
+              Logout
+            </Button>
           </div>
           
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <i className="fas fa-clock"></i>
-            <span data-testid="current-time">{currentTime}</span>
+          {/* Mobile logout button */}
+          <div className="lg:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-foreground"
+              data-testid="header-logout-button-mobile"
+              title="Logout"
+            >
+              Logout
+            </Button>
           </div>
         </div>
       </div>

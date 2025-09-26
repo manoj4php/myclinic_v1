@@ -22,6 +22,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { 
   ZoomIn, 
   ZoomOut, 
@@ -43,7 +47,29 @@ import {
   SkipForward,
   Triangle,
   PenTool,
-  Target
+  Target,
+  FlipHorizontal,
+  FlipVertical,
+  RotateCcw,
+  ArrowRight,
+  Angle,
+  Palette,
+  Eye,
+  EyeOff,
+  ZoomOut as ZoomReset,
+  FileText,
+  Gauge,
+  Link,
+  Unlink,
+  ScrollText,
+  Layers,
+  Sun,
+  Moon,
+  Printer,
+  FileImage,
+  Trash2,
+  Minus,
+  Plus
 } from 'lucide-react';
 
 interface DICOMViewerProps {
@@ -75,6 +101,20 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
   // Multi-file support
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [images, setImages] = useState<string[]>([]);
+  
+  // New state for extended functionality
+  const [annotationColor, setAnnotationColor] = useState('#ff0000');
+  const [annotationOpacity, setAnnotationOpacity] = useState(1);
+  const [showAnnotations, setShowAnnotations] = useState(true);
+  const [showDicomTags, setShowDicomTags] = useState(false);
+  const [cineSpeed, setCineSpeed] = useState(50);
+  const [darkMode, setDarkMode] = useState(false);
+  const [syncScroll, setSyncScroll] = useState(false);
+  const [syncZoom, setSyncZoom] = useState(false);
+  const [syncWindowLevel, setSyncWindowLevel] = useState(false);
+  const [viewportsLinked, setViewportsLinked] = useState(false);
+  const [isFlippedHorizontal, setIsFlippedHorizontal] = useState(false);
+  const [isFlippedVertical, setIsFlippedVertical] = useState(false);
   
   // Initialize images array from props
   useEffect(() => {
@@ -702,6 +742,106 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
     setCurrentImageIndex(images.length - 1);
   };
 
+  // New viewport action functions
+  const onViewportAction = (action: string) => {
+    if (!viewportRef.current) return;
+    
+    const viewport = cornerstone.getViewport(viewportRef.current);
+    
+    switch (action) {
+      case 'flipHorizontal':
+        setIsFlippedHorizontal(!isFlippedHorizontal);
+        viewport.hflip = !viewport.hflip;
+        break;
+      case 'flipVertical':
+        setIsFlippedVertical(!isFlippedVertical);
+        viewport.vflip = !viewport.vflip;
+        break;
+      case 'resetOrientation':
+        setIsFlippedHorizontal(false);
+        setIsFlippedVertical(false);
+        viewport.hflip = false;
+        viewport.vflip = false;
+        viewport.rotation = 0;
+        break;
+      case 'invertColors':
+        viewport.invert = !viewport.invert;
+        break;
+      case 'zoomReset':
+        viewport.scale = 1.0;
+        break;
+      default:
+        console.warn('Unknown viewport action:', action);
+        return;
+    }
+    
+    cornerstone.setViewport(viewportRef.current, viewport);
+  };
+
+  // New tool activation function with enhanced features
+  const onActivateTool = (toolName: string) => {
+    console.log('Activating tool:', toolName);
+    
+    // Handle special tools
+    switch (toolName) {
+      case 'deleteAnnotation':
+        // Stub implementation - would delete selected annotation
+        console.log('Delete annotation tool activated');
+        break;
+      case 'showDicomTags':
+        setShowDicomTags(!showDicomTags);
+        break;
+      case 'toggleAnnotations':
+        setShowAnnotations(!showAnnotations);
+        break;
+      case 'darkLightMode':
+        setDarkMode(!darkMode);
+        break;
+      default:
+        // Use existing activateTool for standard tools
+        activateTool(toolName);
+    }
+  };
+
+  // Sync functions
+  const toggleSyncScroll = () => setSyncScroll(!syncScroll);
+  const toggleSyncZoom = () => setSyncZoom(!syncZoom);
+  const toggleSyncWindowLevel = () => setSyncWindowLevel(!syncWindowLevel);
+  const toggleLinkViewports = () => setViewportsLinked(!viewportsLinked);
+
+  // Export functions
+  const exportAsPNG = () => {
+    if (!viewportRef.current) return;
+    const canvas = cornerstone.getEnabledElement(viewportRef.current).canvas;
+    const link = document.createElement('a');
+    link.download = `dicom-export-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
+  const exportAsPDF = () => {
+    // Stub implementation - would need pdf library
+    console.log('Export as PDF - implementation needed');
+  };
+
+  const printImage = () => {
+    if (!viewportRef.current) return;
+    const canvas = cornerstone.getEnabledElement(viewportRef.current).canvas;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head><title>DICOM Image Print</title></head>
+          <body style="margin:0; text-align:center;">
+            <img src="${canvas.toDataURL()}" style="max-width:100%; max-height:100vh;" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   // Check if multi-image navigation should be shown
   const showMultiImageControls = images.length > 1;
 
@@ -735,116 +875,677 @@ export function DICOMViewer({ imageUrl, imageUrls, initialImageIndex = 0, patien
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* Tool Palette */}
-        <div className="w-20 bg-gray-900 border-r border-gray-700 p-2">
-          <div className="space-y-2">
-            <div className="text-xs text-gray-400 mb-3">Mouse Functions</div>
-            
-            <Button
-              size="sm"
-              variant={activeTool === 'Wwwc' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('Wwwc')}
-              data-testid="tool-window-level"
-            >
-              <Contrast className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              size="sm"
-              variant={activeTool === 'Pan' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('Pan')}
-              data-testid="tool-pan"
-            >
-              <Move className="w-4 h-4" />
-            </Button>
+        {/* Tool Palette - Refactored with Collapsible Panels */}
+        <TooltipProvider>
+          <div className="w-80 bg-gray-900 border-r border-gray-700 overflow-y-auto">
+            <Accordion type="multiple" defaultValue={["mouse", "annotations", "view"]} className="w-full">
+              
+              {/* Mouse Functions Panel */}
+              <AccordionItem value="mouse" className="border-gray-700">
+                <AccordionTrigger className="text-white hover:text-gray-300 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Move className="w-4 h-4" />
+                    <span>Mouse Functions</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'Zoom' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('Zoom')}
+                          data-testid="tool-zoom-in"
+                        >
+                          <ZoomIn className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Zoom In</TooltipContent>
+                    </Tooltip>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'Zoom' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('Zoom')}
-              data-testid="tool-zoom"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={zoomOut}
+                          data-testid="tool-zoom-out"
+                        >
+                          <ZoomOut className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Zoom Out</TooltipContent>
+                    </Tooltip>
 
-            <Separator className="bg-gray-700" />
-            
-            <div className="text-xs text-gray-400 mb-2">Annotations</div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'Pan' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('Pan')}
+                          data-testid="tool-move"
+                        >
+                          <Move className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Move (Pan)</TooltipContent>
+                    </Tooltip>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'Length' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('Length')}
-              data-testid="tool-length"
-            >
-              <Ruler className="w-4 h-4" />
-            </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'FreehandRoi' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('FreehandRoi')}
+                          data-testid="tool-pen"
+                        >
+                          <PenTool className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Pen Tool</TooltipContent>
+                    </Tooltip>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'Angle' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('Angle')}
-              data-testid="tool-angle"
-            >
-              <Triangle className="w-4 h-4" />
-            </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'Length' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700 col-span-2"
+                          onClick={() => onActivateTool('Length')}
+                          data-testid="tool-ruler"
+                        >
+                          <Ruler className="w-4 h-4 mr-2" />
+                          <span className="text-xs">Ruler</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Ruler Tool</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'Probe' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('Probe')}
-              data-testid="tool-probe"
-            >
-              <Target className="w-4 h-4" />
-            </Button>
+              {/* Orientation Panel */}
+              <AccordionItem value="orientation" className="border-gray-700">
+                <AccordionTrigger className="text-white hover:text-gray-300 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <RotateCw className="w-4 h-4" />
+                    <span>Orientation</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={rotate}
+                          data-testid="tool-rotate-cw"
+                        >
+                          <RotateCw className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Rotate Clockwise</TooltipContent>
+                    </Tooltip>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'RectangleRoi' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('RectangleRoi')}
-              data-testid="tool-rectangle"
-            >
-              <Square className="w-4 h-4" />
-            </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onViewportAction('flipHorizontal')}
+                          data-testid="tool-flip-horizontal"
+                        >
+                          <FlipHorizontal className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Flip Horizontal</TooltipContent>
+                    </Tooltip>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'EllipticalRoi' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('EllipticalRoi')}
-              data-testid="tool-ellipse"
-            >
-              <Circle className="w-4 h-4" />
-            </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onViewportAction('flipVertical')}
+                          data-testid="tool-flip-vertical"
+                        >
+                          <FlipVertical className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Flip Vertical</TooltipContent>
+                    </Tooltip>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'ArrowAnnotate' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('ArrowAnnotate')}
-              data-testid="tool-annotate"
-            >
-              <Type className="w-4 h-4" />
-            </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onViewportAction('resetOrientation')}
+                          data-testid="tool-reset-orientation"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reset Orientation</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            <Button
-              size="sm"
-              variant={activeTool === 'FreehandRoi' ? 'default' : 'ghost'}
-              className="w-full p-2 text-white hover:bg-gray-700"
-              onClick={() => activateTool('FreehandRoi')}
-              data-testid="tool-freehand"
-            >
-              <PenTool className="w-4 h-4" />
-            </Button>
+              {/* Annotations Panel */}
+              <AccordionItem value="annotations" className="border-gray-700">
+                <AccordionTrigger className="text-white hover:text-gray-300 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Square className="w-4 h-4" />
+                    <span>Annotations</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'RectangleRoi' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('RectangleRoi')}
+                          data-testid="tool-square"
+                        >
+                          <Square className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Rectangle</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'EllipticalRoi' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('EllipticalRoi')}
+                          data-testid="tool-circle"
+                        >
+                          <Circle className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Circle</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'Angle' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('Angle')}
+                          data-testid="tool-triangle"
+                        >
+                          <Triangle className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Angle Tool</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'ArrowAnnotate' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('ArrowAnnotate')}
+                          data-testid="tool-text"
+                        >
+                          <Type className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Text Tool</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'Probe' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('Probe')}
+                          data-testid="tool-target"
+                        >
+                          <Target className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Target (Crosshair)</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('arrowTool')}
+                          data-testid="tool-arrow"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Arrow Tool</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('freehandTool')}
+                          data-testid="tool-freehand"
+                        >
+                          <PenTool className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Freehand Tool</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('deleteAnnotation')}
+                          data-testid="tool-delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete Annotation</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  
+                  {/* Color Picker and Opacity */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Palette className="w-4 h-4 text-gray-400" />
+                      <input
+                        type="color"
+                        value={annotationColor}
+                        onChange={(e) => setAnnotationColor(e.target.value)}
+                        className="w-8 h-6 rounded border-0 cursor-pointer"
+                        title="Annotation Color"
+                      />
+                      <span className="text-xs text-gray-400 flex-1">Color</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-gray-400 w-12">Opacity</span>
+                      <Slider
+                        value={[annotationOpacity * 100]}
+                        onValueChange={(values) => setAnnotationOpacity(values[0] / 100)}
+                        max={100}
+                        step={1}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-gray-400 w-8">{Math.round(annotationOpacity * 100)}%</span>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* View Functions Panel */}
+              <AccordionItem value="view" className="border-gray-700">
+                <AccordionTrigger className="text-white hover:text-gray-300 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Eye className="w-4 h-4" />
+                    <span>View Functions</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant={activeTool === 'Wwwc' ? 'default' : 'ghost'}
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('Wwwc')}
+                          data-testid="tool-contrast"
+                        >
+                          <Contrast className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Window/Level</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => setIsPlaying(!isPlaying)}
+                          data-testid="tool-play"
+                        >
+                          <Play className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Play</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => setIsPlaying(false)}
+                          data-testid="tool-pause"
+                        >
+                          <Pause className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Pause</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          data-testid="tool-skip-back"
+                        >
+                          <SkipBack className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Skip Back</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          data-testid="tool-skip-forward"
+                        >
+                          <SkipForward className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Skip Forward</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onViewportAction('invertColors')}
+                          data-testid="tool-invert"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Invert Colors</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('toggleAnnotations')}
+                          data-testid="tool-toggle-annotations"
+                        >
+                          {showAnnotations ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{showAnnotations ? 'Hide' : 'Show'} Annotations</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onViewportAction('zoomReset')}
+                          data-testid="tool-zoom-reset"
+                        >
+                          <ZoomReset className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Zoom Reset</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('showDicomTags')}
+                          data-testid="tool-dicom-tags"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Show DICOM Tags</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  
+                  {/* Cine Speed Slider */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Gauge className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs text-gray-400 w-16">Cine Speed</span>
+                      <Slider
+                        value={[cineSpeed]}
+                        onValueChange={(values) => setCineSpeed(values[0])}
+                        max={100}
+                        step={1}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-gray-400 w-8">{cineSpeed}%</span>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Sync Panel */}
+              <AccordionItem value="sync" className="border-gray-700">
+                <AccordionTrigger className="text-white hover:text-gray-300 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Link className="w-4 h-4" />
+                    <span>Sync</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">Sync Scroll</span>
+                      <Switch checked={syncScroll} onCheckedChange={toggleSyncScroll} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">Sync Zoom</span>
+                      <Switch checked={syncZoom} onCheckedChange={toggleSyncZoom} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">Sync Window/Level</span>
+                      <Switch checked={syncWindowLevel} onCheckedChange={toggleSyncWindowLevel} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">Link Viewports</span>
+                      <div className="flex items-center space-x-2">
+                        <Switch checked={viewportsLinked} onCheckedChange={toggleLinkViewports} />
+                        {viewportsLinked ? <Link className="w-4 h-4 text-green-400" /> : <Unlink className="w-4 h-4 text-gray-400" />}
+                      </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Misc Panel */}
+              <AccordionItem value="misc" className="border-gray-700">
+                <AccordionTrigger className="text-white hover:text-gray-300 px-4 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Settings className="w-4 h-4" />
+                    <span>Misc</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={downloadImage}
+                          data-testid="tool-download"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Download</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          data-testid="tool-fullscreen"
+                        >
+                          <Maximize2 className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Full Screen</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          data-testid="tool-settings"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Settings</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => loadImage()}
+                          data-testid="tool-refresh"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Refresh</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={resetView}
+                          data-testid="tool-home"
+                        >
+                          <Home className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reset View</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={() => onActivateTool('darkLightMode')}
+                          data-testid="tool-theme-toggle"
+                        >
+                          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{darkMode ? 'Light' : 'Dark'} Mode</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={printImage}
+                          data-testid="tool-print"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Print</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-gray-700"
+                          onClick={exportAsPNG}
+                          data-testid="tool-export-png"
+                        >
+                          <FileImage className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Export PNG</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            {/* DICOM Tags Panel - Show when enabled */}
+            {showDicomTags && (
+              <div className="border-t border-gray-700 p-4">
+                <h4 className="text-xs font-medium text-gray-400 mb-2">DICOM Tags</h4>
+                <div className="text-xs text-gray-300 space-y-1">
+                  <div>Patient: {patientInfo?.name || 'N/A'}</div>
+                  <div>Study Date: {patientInfo?.studyDate || 'N/A'}</div>
+                  {imageData && (
+                    <>
+                      <div>Image Size: {imageData.width}x{imageData.height}</div>
+                      <div>Pixel Data: {imageData.color ? 'RGB' : 'Grayscale'}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </TooltipProvider>
 
         {/* Main Viewer Area */}
         <div className="flex-1 flex flex-col">
