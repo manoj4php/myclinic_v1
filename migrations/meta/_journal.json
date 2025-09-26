@@ -22,6 +22,27 @@
       "when": 1758466123678,
       "tag": "0002_greedy_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758899522023,
+      "tag": "0003_legal_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1758899652316,
+      "tag": "0004_gray_nekra",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758900052995,
+      "tag": "0005_late_sunset_bain",
+      "breakpoints": true
     }
   ]
 }

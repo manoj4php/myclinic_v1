@@ -19,7 +19,9 @@ import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
 
 const formSchema = insertPatientSchema.extend({
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  age: z.coerce.number().min(0, "Age must be 0 or greater").max(120, "Age must be 120 or less"),
+}).omit({
+  dateOfBirth: true,
 });
 
 export default function AddPatient() {
@@ -56,7 +58,7 @@ export default function AddPatient() {
       email: "",
       phone: "",
       address: "",
-      dateOfBirth: "",
+      age: 0,
       gender: undefined,
       specialty: undefined,
       chiefComplaint: "",
@@ -141,7 +143,7 @@ export default function AddPatient() {
       
       const patientData = {
         ...cleanData,
-        dateOfBirth: new Date(data.dateOfBirth),
+        age: data.age,
         studyDate: submissionTime, // Auto-set study date to current date/time
         studyTime: submissionTime.toLocaleTimeString('en-US', { 
           hour12: false, 
@@ -324,15 +326,19 @@ export default function AddPatient() {
                   
                   <FormField
                     control={form.control}
-                    name="dateOfBirth"
+                    name="age"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date of Birth *</FormLabel>
+                        <FormLabel>Age *</FormLabel>
                         <FormControl>
                           <Input 
-                            type="date" 
-                            data-testid="input-patient-dob"
+                            type="number" 
+                            placeholder="Enter Age"
+                            min={0}
+                            max={120}
+                            data-testid="input-patient-age"
                             {...field} 
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -371,7 +377,7 @@ export default function AddPatient() {
                         <FormLabel>Phone Number *</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="+1 (555) 123-4567" 
+                            placeholder="+91 XXXXXXXXXX" 
                             data-testid="input-patient-phone"
                             {...field} 
                           />

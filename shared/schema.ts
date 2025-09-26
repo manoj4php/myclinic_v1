@@ -61,7 +61,8 @@ export const patients = pgTable("patients", {
   email: varchar("email"),
   phone: varchar("phone").notNull(),
   address: text("address"),
-  dateOfBirth: timestamp("date_of_birth").notNull(),
+  dateOfBirth: timestamp("date_of_birth"), // Made nullable since we're using age field now
+  age: integer("age"),
   gender: genderEnum("gender").notNull(),
   specialty: specialtyEnum("specialty").notNull(),
   chiefComplaint: text("chief_complaint"),
@@ -199,7 +200,8 @@ export const insertPatientSchema = createInsertSchema(patients).omit({
   dateOfBirth: z.union([
     z.date(),
     z.string().transform((str) => new Date(str))
-  ]),
+  ]).optional(),
+  age: z.number().min(0, "Age must be 0 or greater").max(120, "Age must be 120 or less").optional(),
   studyDate: z.union([
     z.date(),
     z.string().transform((str) => new Date(str))
