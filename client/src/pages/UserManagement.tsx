@@ -136,6 +136,7 @@ export default function UserManagement() {
   const userStats = {
     total: pagination.total,
     doctors: Array.isArray(users) ? users.filter((u: any) => u.role === 'user').length : 0,
+    technicians: Array.isArray(users) ? users.filter((u: any) => u.role === 'technician').length : 0,
     admins: Array.isArray(users) ? users.filter((u: any) => u.role === 'admin' || u.role === 'super_admin').length : 0,
   };
 
@@ -280,7 +281,7 @@ export default function UserManagement() {
         </div>
       </div>
       {/* User Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <AnalyticsCard
           title="Total Users"
           value={userStats.total}
@@ -293,6 +294,13 @@ export default function UserManagement() {
           value={userStats.doctors}
           icon="fa-user-md"
           color="chart-1"
+        />
+        
+        <AnalyticsCard
+          title="Active Technicians"
+          value={userStats.technicians}
+          icon="fa-user-cog"
+          color="chart-3"
         />
         
         <AnalyticsCard
@@ -328,6 +336,7 @@ export default function UserManagement() {
                 <SelectItem value="super_admin">Super Admin</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="user">Doctor</SelectItem>
+                <SelectItem value="technician">Technician</SelectItem>
               </SelectContent>
             </Select>
             

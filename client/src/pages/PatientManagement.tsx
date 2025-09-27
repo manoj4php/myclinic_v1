@@ -240,7 +240,7 @@ export default function PatientManagement() {
     },
   });
 
-  const { data: patientsResponse, isLoading } = useQuery({
+  const { data: patientsResponse, isLoading, refetch: refetchPatients } = useQuery({
     queryKey: ["/api/patients", { 
       page: currentPage, 
       limit: itemsPerPage, 
@@ -743,6 +743,7 @@ export default function PatientManagement() {
                     variant="outline" 
                     size="sm"
                     className="h-8 px-2"
+                    onClick={() => refetchPatients()}
                   >
                     <RefreshCw className="w-3 h-3" />
                   </Button>
