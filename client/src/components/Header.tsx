@@ -30,9 +30,23 @@ export default function Header() {
     if (user && typeof user === 'object' && ('firstName' in user || 'lastName' in user)) {
       const firstName = (user as any).firstName || '';
       const lastName = (user as any).lastName || '';
-      return `${firstName} ${lastName}`.trim();
+      const fullName = `${firstName} ${lastName}`.trim();
+      
+      // Add "Dr." prefix if user role is doctor
+      if ((user as any).role === 'doctor') {
+        return `Dr. ${fullName}`;
+      }
+      
+      return fullName;
     }
-    return (user as any)?.email || 'User';
+    
+    const fallbackName = (user as any)?.email || 'User';
+    // Add "Dr." prefix for doctor role even with email fallback
+    if ((user as any)?.role === 'doctor') {
+      return `Dr. ${fallbackName}`;
+    }
+    
+    return fallbackName;
   };
 
   const getFormattedDate = () => {

@@ -6,6 +6,7 @@ import {
   notifications,
   patientArchive,
   seoConfigs,
+  userSessions,
   type User,
   type UpsertUser,
   type Patient,
@@ -18,6 +19,8 @@ import {
   type Notification,
   type InsertNotification,
   type PatientArchive,
+  type UserSession,
+  type InsertUserSession,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, like, sql } from "drizzle-orm";
@@ -32,7 +35,16 @@ export interface IStorage {
   findUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: any): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
+  updateLastLogin(userId: string): Promise<void>;
   getAllUsers(limit?: number, offset?: number, sortBy?: string, sortOrder?: string, search?: string, role?: string): Promise<{ users: User[], total: number }>;
+  
+  // Session management operations
+  createUserSession(session: InsertUserSession): Promise<UserSession>;
+  getUserActiveSessions(userId: string): Promise<UserSession[]>;
+  invalidateUserSession(sessionId: string): Promise<void>;
+  invalidateAllUserSessions(userId: string): Promise<void>;
+  updateSessionActivity(sessionId: string): Promise<void>;
+  cleanupExpiredSessions(): Promise<void>;
   
   // Patient operations
   getPatient(id: string): Promise<Patient | undefined>;
@@ -143,6 +155,16 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateLastLogin(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        lastLoginAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
   async getAllUsers(
     limit: number = 10, 
     offset: number = 0, 
@@ -202,6 +224,113 @@ export class DatabaseStorage implements IStorage {
       users: usersResult,
       total: totalResult[0]?.count || 0
     };
+  }
+
+  // Session management operations
+  async createUserSession(sessionData: InsertUserSession): Promise<UserSession> {
+    console.log("Creating user session with data:", sessionData);
+    try {
+      const [session] = await db
+        .insert(userSessions)
+        .values({
+          ...sessionData,
+          createdAt: new Date(),
+          lastActivity: new Date(),
+        })
+        .returning();
+      console.log("User session created successfully:", session);
+      return session;
+    } catch (error) {
+      console.error("Error creating user session:", error);
+      throw error;
+    }
+  }
+
+  async getUserActiveSessions(userId: string): Promise<UserSession[]> {
+    console.log("Getting active sessions for user:", userId);
+    const now = new Date();
+    console.log("Current time:", now.toISOString());
+    
+    const sessions = await db
+      .select()
+      .from(userSessions)
+      .where(
+        and(
+          eq(userSessions.userId, userId),
+          eq(userSessions.isActive, true),
+          sql`${userSessions.expiresAt} > ${now.toISOString()}`
+        )
+      )
+      .orderBy(desc(userSessions.lastActivity));
+    
+    console.log("Found active sessions:", sessions.length);
+    if (sessions.length > 0) {
+      console.log("Active sessions:", sessions.map(s => ({ 
+        id: s.id, 
+        expiresAt: s.expiresAt, 
+        isActive: s.isActive 
+      })));
+    }
+    return sessions;
+  }
+
+  async invalidateUserSession(sessionId: string): Promise<void> {
+    await db
+      .update(userSessions)
+      .set({
+        isActive: false,
+        lastActivity: new Date(),
+      })
+      .where(eq(userSessions.id, sessionId));
+  }
+
+  async invalidateAllUserSessions(userId: string): Promise<void> {
+    console.log(`[Storage] Deleting all sessions for user: ${userId}`);
+    
+    // First check existing sessions
+    const existingSessions = await db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.userId, userId));
+    
+    console.log(`[Storage] Found ${existingSessions.length} existing sessions for user ${userId}:`, 
+      existingSessions.map(s => ({ id: s.id, isActive: s.isActive, expiresAt: s.expiresAt }))
+    );
+    
+    // Delete all sessions from database
+    const result = await db
+      .delete(userSessions)
+      .where(eq(userSessions.userId, userId));
+    
+    console.log(`[Storage] Delete operation completed for user ${userId}`);
+    
+    // Verify deletion
+    const remainingSessions = await db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.userId, userId));
+    
+    console.log(`[Storage] Remaining sessions after deletion: ${remainingSessions.length}`);
+  }
+
+  async updateSessionActivity(sessionId: string): Promise<void> {
+    await db
+      .update(userSessions)
+      .set({
+        lastActivity: new Date(),
+      })
+      .where(eq(userSessions.id, sessionId));
+  }
+
+  async cleanupExpiredSessions(): Promise<void> {
+    console.log('[Storage] Cleaning up expired sessions');
+    
+    // Delete expired sessions from database
+    const result = await db
+      .delete(userSessions)
+      .where(sql`${userSessions.expiresAt} <= NOW()`);
+    
+    console.log('[Storage] Cleaned up expired sessions');
   }
 
   // Patient operations

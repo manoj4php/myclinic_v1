@@ -167,13 +167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the logout action
       console.log(`User ${userId} logging out at ${new Date().toISOString()}`);
       
-      // In a more advanced implementation, you could:
-      // 1. Invalidate the JWT token by adding it to a blacklist
-      // 2. Clear any server-side sessions
-      // 3. Log security events
-      // 4. Update last activity timestamp
+      if (userId) {
+        // Clear all sessions for this user from database
+        console.log(`[Logout] Clearing all sessions for user: ${userId}`);
+        await storage.invalidateAllUserSessions(userId);
+        console.log(`[Logout] Sessions cleared for user: ${userId}`);
+      } else {
+        console.log(`[Logout] No user ID found, skipping session cleanup`);
+      }
       
-      // For now, we'll just acknowledge the logout
       res.json({ 
         message: "Logout successful",
         timestamp: new Date().toISOString()
@@ -181,6 +183,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error during logout:", error);
       res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  // Session management routes
+  app.post('/api/auth/force-login', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+
+      // Invalidate all existing sessions for this user
+      await storage.invalidateAllUserSessions(userId);
+      
+      // Create new session (this will be handled by re-login)
+      res.json({ 
+        message: "All sessions invalidated. Please log in again.",
+        code: "SESSIONS_INVALIDATED"
+      });
+    } catch (error) {
+      console.error("Error forcing login:", error);
+      res.status(500).json({ message: "Failed to force login" });
+    }
+  });
+
+  app.get('/api/auth/active-sessions', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+
+      const activeSessions = await storage.getUserActiveSessions(userId);
+      res.json({ 
+        activeSessions: activeSessions.map(session => ({
+          id: session.id,
+          deviceInfo: session.deviceInfo,
+          ipAddress: session.ipAddress,
+          lastActivity: session.lastActivity,
+          createdAt: session.createdAt
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching active sessions:", error);
+      res.status(500).json({ message: "Failed to fetch active sessions" });
+    }
+  });
+
+  app.post('/api/auth/invalidate-session/:sessionId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { sessionId } = req.params;
+      await storage.invalidateUserSession(sessionId);
+      
+      res.json({ 
+        message: "Session invalidated successfully",
+        sessionId
+      });
+    } catch (error) {
+      console.error("Error invalidating session:", error);
+      res.status(500).json({ message: "Failed to invalidate session" });
     }
   });
 

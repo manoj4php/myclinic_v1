@@ -25,14 +25,29 @@ export default function Landing() {
     setIsLoading(true);
     try {
       const response = await apiRequest("POST", "/api/login", { email, password });
-      const { token } = await response.json();
+      
+      if (response.status === 409) {
+        // Concurrent session detected - login blocked
+        const data = await response.json();
+        toast({
+          title: "Login Blocked",
+          description: "User already logged in from another device. Please logout from other sessions first.",
+          variant: "destructive",
+        });
+        return; // Stop here, don't proceed with login
+      }
+      
+      const data = await response.json();
+      const { token } = data;
       
       if (token) {
         localStorage.setItem("jwtToken", token);
+        
         toast({
           title: "Success",
           description: "Login successful!",
         });
+        
         // Force a page reload to update auth state
         window.location.href = "/";
       } else {
@@ -40,11 +55,21 @@ export default function Landing() {
       }
     } catch (error: any) {
       console.error("Login error:", error);
-      toast({
-        title: "Login Failed",
-        description: error.message?.includes('401') ? "Invalid email or password" : "Login failed. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Handle different error scenarios
+      if (error.message?.includes('409')) {
+        toast({
+          title: "Login Blocked",
+          description: "User already logged in from another device. Please logout from other sessions first.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: error.message?.includes('401') ? "Invalid email or password" : "Login failed. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

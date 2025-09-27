@@ -24,10 +24,19 @@ import NotFound from "@/pages/not-found";
 import Sidebar, { SidebarProvider, useSidebar } from "@/components/Sidebar";
 import Header from "@/components/Header";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { ConcurrentSessionDialog } from "@/components/ConcurrentSessionDialog";
+import { useSessionMonitoring } from "@/hooks/useSessionMonitoring";
 
 function AuthenticatedLayout() {
   const { isCollapsed } = useSidebar();
   const { user } = useAuth();
+  const {
+    showConcurrentDialog,
+    activeSessions,
+    handleForceLogin,
+    closeConcurrentDialog,
+    userEmail,
+  } = useSessionMonitoring();
   
   return (
     <div className="min-h-screen bg-background">
@@ -57,6 +66,15 @@ function AuthenticatedLayout() {
           <Route component={NotFound} />
         </Switch>
       </div>
+      
+      {/* Concurrent Session Dialog */}
+      <ConcurrentSessionDialog
+        isOpen={showConcurrentDialog}
+        onClose={closeConcurrentDialog}
+        activeSessions={activeSessions}
+        onForceLogin={handleForceLogin}
+        userEmail={userEmail}
+      />
     </div>
   );
 }

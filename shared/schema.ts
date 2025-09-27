@@ -47,11 +47,25 @@ export const users = pgTable("users", {
   specialty: specialtyEnum("specialty"),
   isActive: boolean("is_active").default(true),
   emailNotifications: boolean("email_notifications").default(true),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   createdBy: varchar("created_by"),
   updatedBy: varchar("updated_by"),
   ipAddress: varchar("ip_address"),
+});
+
+// User Sessions table for concurrent login management
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  sessionToken: varchar("session_token").notNull(),
+  deviceInfo: varchar("device_info"), // Browser/OS info
+  ipAddress: varchar("ip_address"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastActivity: timestamp("last_activity").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
 });
 
 // Patients table
@@ -228,6 +242,9 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = typeof userSessions.$inferInsert;
 
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
