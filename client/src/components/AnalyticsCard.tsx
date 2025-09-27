@@ -22,20 +22,20 @@ export default function AnalyticsCard({ title, value, subtitle, icon, color }: A
   };
 
   return (
-    <Card>
-      <CardContent className="p-6">
+    <Card className="border-blue-100 shadow-sm">
+      <CardContent className="p-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold text-foreground" data-testid={`analytics-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+            <p className="text-xs text-muted-foreground">{title}</p>
+            <p className="text-xl font-bold text-foreground" data-testid={`analytics-${title.toLowerCase().replace(/\s+/g, '-')}`}>
               {value}
             </p>
             {subtitle && (
-              <p className="text-sm text-accent">{subtitle}</p>
+              <p className="text-xs text-accent">{subtitle}</p>
             )}
           </div>
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getColorClasses()}`}>
-            <i className={`fas ${icon}`}></i>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getColorClasses()}`}>
+            <i className={`fas ${icon} text-sm`}></i>
           </div>
         </div>
       </CardContent>

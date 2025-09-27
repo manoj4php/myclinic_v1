@@ -137,18 +137,33 @@ export default function UserManagement() {
   const canManageUsers = (currentUser as any)?.role === 'super_admin' || (currentUser as any)?.role === 'admin';
 
   return (
-    <div className="p-6" data-testid="users-view">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">User Management</h2>
-          <p className="text-muted-foreground">
-            Manage user accounts, roles, and permissions
+    <div className="p-6 bg-gradient-to-br from-blue-50/50 to-white min-h-screen" data-testid="users-view">
+      <div className="mb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">User Management</h1>
+            </div>
+            <div className="text-xs text-gray-600">
+              System Users & Access Control
+            </div>
             {!canManageUsers && (
-              <span className="block text-amber-600 text-sm mt-1">
+              <div className="text-xs text-amber-600">
                 <i className="fas fa-info-circle mr-1"></i>
-                Admin or Super Admin role required to add/edit users
-              </span>
+                Admin role required
+              </div>
             )}
+          </div>
+          <div className="text-xs text-gray-500">
+            {new Date().toLocaleDateString()}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Manage user accounts, roles, and permissions
           </p>
         </div>
         {canManageUsers ? (
@@ -183,7 +198,7 @@ export default function UserManagement() {
       </div>
       
       {/* User Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <AnalyticsCard
           title="Total Users"
           value={userStats.total}
@@ -207,31 +222,30 @@ export default function UserManagement() {
       </div>
       
       {/* Users Table */}
-      <Card>
-        <CardHeader>
+      <Card className="border-blue-100 shadow-sm">
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle>All Users</CardTitle>
+            <CardTitle className="text-sm font-semibold">All Users</CardTitle>
             <div className="flex items-center space-x-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExport}
-                className="flex items-center space-x-2"
+                className="h-8 px-2"
                 data-testid="button-export-users"
               >
-                <Download className="w-4 h-4" />
-                <span>Export to Excel</span>
+                <Download className="w-3 h-3" />
               </Button>
               <Input
                 type="text"
                 placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-64"
+                className="w-48 h-8 text-sm"
                 data-testid="input-search-users"
               />
               <Select value={selectedRole} onValueChange={handleRoleChange}>
-                <SelectTrigger className="w-48" data-testid="select-role-filter">
+                <SelectTrigger className="w-32 h-8 text-sm" data-testid="select-role-filter">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
                 <SelectContent>
@@ -262,13 +276,13 @@ export default function UserManagement() {
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">User</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Role</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Specialty</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Created</th>
+                    <th className="text-left p-2 text-xs font-medium text-muted-foreground">User</th>
+                    <th className="text-left p-2 text-xs font-medium text-muted-foreground">Role</th>
+                    <th className="text-left p-2 text-xs font-medium text-muted-foreground">Specialty</th>
+                    <th className="text-left p-2 text-xs font-medium text-muted-foreground">Status</th>
+                    <th className="text-left p-2 text-xs font-medium text-muted-foreground">Created</th>
                     {canManageUsers && (
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                      <th className="text-left p-2 text-xs font-medium text-muted-foreground">Actions</th>
                     )}
                   </tr>
                 </thead>
@@ -284,36 +298,36 @@ export default function UserManagement() {
                         onClick={() => setLocation(`/users/${user.id}`)}
                         data-testid={`user-row-${user.id}`}
                       >
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <td className="p-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                               <span className="text-xs font-medium text-primary-foreground">{initials}</span>
                             </div>
                             <div>
-                              <p className="font-medium text-foreground">
+                              <p className="text-sm font-medium text-foreground">
                                 {user.firstName || user.lastName 
                                   ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
                                   : user.email
                                 }
                               </p>
-                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                              <p className="text-xs text-muted-foreground">{user.email}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="p-4">
+                        <td className="p-2">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${roleColors[user.role as keyof typeof roleColors] || 'bg-muted text-muted-foreground'}`}>
                             {user.role?.replace('_', ' ')}
                           </span>
                         </td>
-                        <td className="p-4 text-sm text-foreground capitalize">
+                        <td className="p-2 text-xs text-foreground capitalize">
                           {user.specialty || '-'}
                         </td>
-                        <td className="p-4">
+                        <td className="p-2">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
                             {user.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="p-4 text-sm text-muted-foreground">
+                        <td className="p-2 text-xs text-muted-foreground">
                           {new Date(user.createdAt).toLocaleDateString()}
                         </td>
                         {canManageUsers && (

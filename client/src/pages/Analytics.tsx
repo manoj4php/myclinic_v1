@@ -47,7 +47,7 @@ export default function Analytics() {
   };
 
   return (
-    <div className="p-6" data-testid="analytics-view">
+    <div className="p-6 bg-gradient-to-br from-blue-50/50 to-white min-h-screen" data-testid="analytics-view">
       <SEO
         title={seoConfig?.title || 'Analytics - ClinicConnect'}
         description={seoConfig?.description || 'View detailed analytics and insights for your clinical practice'}
@@ -55,17 +55,28 @@ export default function Analytics() {
         {...seoConfig}
       />
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Analytics Dashboard</h2>
-        <p className="text-muted-foreground">Detailed insights and analytics for your clinic</p>
+      <div className="mb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Analytics Dashboard</h1>
+            </div>
+            <div className="text-xs text-gray-600">
+              Clinical Performance & Insights
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            {new Date().toLocaleDateString()}
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card className="mb-4 border-blue-100 shadow-sm">
+        <CardContent className="p-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Time Range</label>
+              <label className="block text-xs font-medium text-foreground mb-1">Time Range</label>
               <Select value={timeRange} onValueChange={setTimeRange}>
                 <SelectTrigger data-testid="select-time-range">
                   <SelectValue placeholder="Select time range" />
@@ -83,7 +94,7 @@ export default function Analytics() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Specialty</label>
+              <label className="block text-xs font-medium text-foreground mb-1">Specialty</label>
               <Select value={specialty} onValueChange={setSpecialty}>
                 <SelectTrigger data-testid="select-specialty-filter">
                   <SelectValue placeholder="Select specialty" />
@@ -100,7 +111,7 @@ export default function Analytics() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Medical Abbreviations</label>
+              <label className="block text-xs font-medium text-foreground mb-1">Medical Abbreviations</label>
               <Select>
                 <SelectTrigger data-testid="select-medical-abbreviation">
                   <SelectValue placeholder="Filter by abbreviation" />
@@ -122,7 +133,7 @@ export default function Analytics() {
       </Card>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <AnalyticsCard
           title="Total Patients"
           value={dashboardStats?.totalPatients || 0}
@@ -156,25 +167,25 @@ export default function Analytics() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Patient Distribution by Specialty */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Patient Distribution by Specialty</CardTitle>
+        <Card className="border-blue-100 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Patient Distribution by Specialty</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-3">
+            <div className="space-y-2">
               {specialtyData?.map((item: SpecialtyData) => (
                 <div 
                   key={item.specialty}
-                  className={`flex items-center justify-between p-3 rounded-md ${specialtyColors[item.specialty as keyof typeof specialtyColors]} text-white`}
+                  className={`flex items-center justify-between p-2 rounded-md ${specialtyColors[item.specialty as keyof typeof specialtyColors]} text-white`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <i className={`fas ${specialtyIcons[item.specialty as keyof typeof specialtyIcons]}`}></i>
-                    <span className="font-medium capitalize">{item.specialty}</span>
+                  <div className="flex items-center space-x-2">
+                    <i className={`fas ${specialtyIcons[item.specialty as keyof typeof specialtyIcons]} w-3 h-3`}></i>
+                    <span className="text-sm font-medium capitalize">{item.specialty}</span>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{item.count}</div>
+                    <div className="text-sm font-bold">{item.count}</div>
                     <div className="text-xs opacity-90">
                       {specialtyData && ((item.count / specialtyData.reduce((sum: number, s: SpecialtyData) => sum + s.count, 0)) * 100).toFixed(1)}%
                     </div>
@@ -191,16 +202,16 @@ export default function Analytics() {
         </Card>
 
         {/* Performance Metrics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
+        <Card className="border-blue-100 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Performance Metrics</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
+          <CardContent className="p-3">
+            <div className="space-y-3">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">Patient Satisfaction</span>
-                  <span className="text-sm text-muted-foreground">95%</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-foreground">Patient Satisfaction</span>
+                  <span className="text-xs text-muted-foreground">95%</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-accent h-2 rounded-full" style={{ width: '95%' }}></div>
@@ -208,9 +219,9 @@ export default function Analytics() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">Average Wait Time</span>
-                  <span className="text-sm text-muted-foreground">12 min</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-foreground">Average Wait Time</span>
+                  <span className="text-xs text-muted-foreground">12 min</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }}></div>
@@ -218,9 +229,9 @@ export default function Analytics() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">Report Completion Rate</span>
-                  <span className="text-sm text-muted-foreground">88%</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-foreground">Report Completion Rate</span>
+                  <span className="text-xs text-muted-foreground">88%</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-chart-1 h-2 rounded-full" style={{ width: '88%' }}></div>
@@ -228,9 +239,9 @@ export default function Analytics() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">System Uptime</span>
-                  <span className="text-sm text-muted-foreground">99.9%</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-foreground">System Uptime</span>
+                  <span className="text-xs text-muted-foreground">99.9%</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div className="bg-chart-2 h-2 rounded-full" style={{ width: '100%' }}></div>

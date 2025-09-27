@@ -112,32 +112,40 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-6" data-testid="settings-view">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Settings</h2>
-        <p className="text-muted-foreground">Manage your account and system preferences</p>
+    <div className="p-6 bg-gradient-to-br from-blue-50/50 to-white min-h-screen" data-testid="settings-view">
+      <div className="mb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Settings</h1>
+            </div>
+            <div className="text-xs text-gray-600">
+              Account & System Preferences
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            {new Date().toLocaleDateString()}
+          </div>
+        </div>
       </div>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" data-testid="tab-profile">Profile</TabsTrigger>
           <TabsTrigger value="notifications" data-testid="tab-notifications">Notifications</TabsTrigger>
           <TabsTrigger value="system" data-testid="tab-system">System</TabsTrigger>
           <TabsTrigger value="security" data-testid="tab-security">Security</TabsTrigger>
-          {user?.role === 'super_admin' && (
-            <TabsTrigger value="seo" data-testid="tab-seo">SEO</TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="profile">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+          <Card className="border-blue-100 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Profile Information</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSaveProfile)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={form.handleSubmit(handleSaveProfile)} className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name="firstName"
@@ -212,14 +220,14 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
+          <Card className="border-blue-100 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Notification Preferences</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSaveNotifications)} className="space-y-6">
-                  <div className="space-y-4">
+                <form onSubmit={form.handleSubmit(handleSaveNotifications)} className="space-y-3">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-foreground">Email Notifications</p>

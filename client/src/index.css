@@ -102,4 +102,78 @@
   .notification-badge {
     @apply absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center;
   }
+  
+  /* Compact professional styling utilities */
+  .compact-card {
+    @apply border-blue-100 shadow-sm;
+  }
+  
+  .compact-header {
+    @apply pb-2;
+  }
+  
+  .compact-title {
+    @apply text-sm font-semibold;
+  }
+  
+  .compact-content {
+    @apply p-3;
+  }
+  
+  .compact-spacing {
+    @apply space-y-3;
+  }
+  
+  .compact-grid {
+    @apply gap-3;
+  }
+  
+  .compact-text {
+    @apply text-xs;
+  }
+  
+  .compact-button {
+    @apply h-8 px-2 text-xs;
+  }
+  
+  .compact-input {
+    @apply h-8 text-sm;
+  }
+}
+
+/* Ensure tooltips are properly displayed */
+[data-radix-tooltip-content] {
+  z-index: 9999 !important;
+  animation-duration: 200ms !important;
+  animation-timing-function: ease-out !important;
+}
+
+[data-radix-tooltip-content][data-state="delayed-open"] {
+  animation-name: tooltipSlideIn !important;
+}
+
+[data-radix-tooltip-content][data-state="closed"] {
+  animation-name: tooltipSlideOut !important;
+}
+
+@keyframes tooltipSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes tooltipSlideOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-2px);
+  }
 }

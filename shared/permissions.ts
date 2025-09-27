@@ -9,7 +9,8 @@ export type SidebarMenu =
   | 'reports' 
   | 'user-management' 
   | 'settings' 
-  | 'notifications';
+  | 'notifications'
+  | 'seo-settings';
 
 export type ModuleAction = 
   | 'view' 
@@ -51,7 +52,8 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'reports',
       'user-management',
       'settings',
-      'notifications'
+      'notifications',
+      'seo-settings'
     ],
     permissions: [
       {

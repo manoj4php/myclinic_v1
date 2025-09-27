@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, createContext, useContext, ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ChevronLeft, Menu } from "lucide-react";
 import type { User, Notification } from "@/types";
@@ -29,6 +29,7 @@ const navigationItems: NavigationItem[] = [
   { path: "/analytics", label: "Analytics", icon: "fa-chart-bar", key: "analytics" },
   { path: "/users", label: "User Management", icon: "fa-user-cog", key: "user-management" },
   { path: "/settings", label: "Settings", icon: "fa-cog", key: "settings" },
+  { path: "/seo-settings", label: "SEO Settings", icon: "fa-cog", key: "seo-settings" },
 ];
 
 // Create sidebar context
@@ -125,6 +126,11 @@ export default function Sidebar() {
 
   // Helper function to get the first letter of a menu item
   const getMenuLetter = (label: string) => {
+    // For multi-word labels, take first letter of each word (max 2 letters)
+    const words = label.split(' ');
+    if (words.length > 1) {
+      return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
+    }
     return label.charAt(0).toUpperCase();
   };
 
@@ -137,12 +143,12 @@ export default function Sidebar() {
   );
 
   return (
-    <TooltipProvider>
+    <>
       {mobileOverlay}
       <div className={`fixed left-0 top-0 h-full bg-card border-r border-border transition-all duration-300 ease-in-out flex flex-col z-50 ${
         isMobile 
           ? `${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} w-64`
-          : `${isCollapsed ? 'w-[4.5rem]' : 'w-64'}`
+          : `${isCollapsed ? 'w-16' : 'w-64'}`
       }`}>
         {/* Header with logo and toggle */}
         <div className={`border-b border-border transition-all duration-300 flex-shrink-0 ${
@@ -195,34 +201,36 @@ export default function Sidebar() {
                   <button
                     key={item.path}
                     onClick={() => handleNavigation(item.path)}
-                    className={`w-full flex items-center rounded-md transition-all duration-300 relative ${
+                    className={`w-full flex items-center rounded-md transition-all duration-300 relative group ${
                       isCollapsed && !isMobile
                         ? 'px-3 py-3 justify-center min-w-[2.75rem]' 
                         : 'gap-3 px-3 py-2.5 justify-start'
                     } ${
                       isActive
                         ? "bg-primary text-primary-foreground shadow-sm"
-                        : "hover:bg-muted text-foreground hover:shadow-sm"
+                        : "hover:bg-muted text-foreground hover:shadow-sm hover:scale-105"
                     }`}
                     data-testid={`nav-${item.path.replace("/", "") || "dashboard"}`}
                     aria-label={item.label}
                   >
-                    {item.icon ? (
-                      <i className={`fas ${item.icon} flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                        isCollapsed && !isMobile ? 'text-base w-6 h-6' : 'text-sm w-5 h-5'
-                      }`}></i>
-                    ) : (
-                      <div className={`flex items-center justify-center flex-shrink-0 transition-all duration-200 font-bold text-center ${
-                        isCollapsed && !isMobile 
-                          ? `w-8 h-8 text-sm rounded ${
-                              isActive 
-                                ? 'bg-primary-foreground text-primary' 
-                                : 'bg-card text-card-foreground border border-border'
-                            }` 
-                          : 'w-5 h-5 text-sm'
+                    {isCollapsed && !isMobile ? (
+                      // Show first letter when collapsed
+                      <div className={`flex items-center justify-center flex-shrink-0 transition-all duration-200 font-bold text-center w-8 h-8 text-xs rounded-md ${
+                        isActive 
+                          ? 'bg-primary-foreground text-primary shadow-sm' 
+                          : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
                       }`}>
                         {getMenuLetter(item.label)}
                       </div>
+                    ) : (
+                      // Show icon when expanded (or use first letter as fallback)
+                      item.icon ? (
+                        <i className={`fas ${item.icon} flex items-center justify-center flex-shrink-0 transition-all duration-200 text-sm w-5 h-5`}></i>
+                      ) : (
+                        <div className="flex items-center justify-center flex-shrink-0 transition-all duration-200 font-bold text-center w-5 h-5 text-sm">
+                          {getMenuLetter(item.label)}
+                        </div>
+                      )
                     )}
                     {(!isCollapsed || isMobile) && (
                       <span className="text-sm font-medium truncate transition-opacity duration-300">
@@ -247,6 +255,11 @@ export default function Sidebar() {
                     </TooltipTrigger>
                     <TooltipContent side="right" className="font-medium">
                       {item.label}
+                      {showNotificationBadge && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {unreadNotifications} unread
+                        </div>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 ) : navigationButton;
@@ -318,6 +331,6 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </TooltipProvider>
+    </>
   );
 }

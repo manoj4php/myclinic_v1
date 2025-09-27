@@ -244,7 +244,7 @@ export default function PatientManagement() {
     queryKey: ["/api/patients", { 
       page: currentPage, 
       limit: itemsPerPage, 
-      search: searchQuery || undefined,
+      search: (searchQuery && searchQuery.length >= 3) ? searchQuery : undefined,
       specialty: selectedSpecialty !== "all" ? selectedSpecialty : undefined 
     }],
     queryFn: async () => {
@@ -253,7 +253,7 @@ export default function PatientManagement() {
         limit: itemsPerPage.toString(),
       });
       
-      if (searchQuery) params.append('search', searchQuery);
+      if (searchQuery && searchQuery.length >= 3) params.append('search', searchQuery);
       if (selectedSpecialty !== "all") params.append('specialty', selectedSpecialty);
       
       const response = await apiReq("GET", `/api/patients?${params.toString()}`);
@@ -298,9 +298,12 @@ export default function PatientManagement() {
   // Reset page when filters change
   const handleSearchChange = (newSearchQuery: string) => {
     setSearchQuery(newSearchQuery);
-    setCurrentPage(1);
-    setSelectedPatients([]);
-    setSelectedPatient(null); // Clear selected patient
+    // Only trigger search/filter when 3 or more characters are entered, or when clearing
+    if (newSearchQuery.length >= 3 || newSearchQuery.length === 0) {
+      setCurrentPage(1);
+      setSelectedPatients([]);
+      setSelectedPatient(null); // Clear selected patient
+    }
   };
 
   const handleSpecialtyChange = (newSpecialty: string) => {
@@ -405,8 +408,8 @@ export default function PatientManagement() {
   };
 
   const filteredPatients = patientsWithFiles?.filter((patient: any) => {
-    // Search filter
-    if (searchQuery) {
+    // Search filter - only apply if 3 or more characters
+    if (searchQuery && searchQuery.length >= 3) {
       const searchLower = searchQuery.toLowerCase();
       const matchesName = patient.name?.toLowerCase().includes(searchLower);
       const matchesPhone = patient.phone?.toLowerCase().includes(searchLower);
@@ -787,15 +790,15 @@ export default function PatientManagement() {
       {/* Advanced Filter Section */}
       <Card className="mb-4 border-blue-100 shadow-sm">
         <CardContent className="p-3">
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-8 gap-3">
+            <div className="relative col-span-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
               <Input
                 type="text"
-                placeholder="Search by name, ID, phone..."
+                placeholder="Search by name, ID, phone... (min 3 chars)"
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9 h-8 text-sm"
+                className="pl-9 h-8 text-sm w-full"
                 data-testid="input-search-patients"
               />
             </div>

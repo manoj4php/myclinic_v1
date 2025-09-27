@@ -291,22 +291,33 @@ function AddPatient() {
       isLoading={createPatientMutation.isPending}
       message="Creating patient..."
     >
-      <div className="p-6" data-testid="add-patient-view">
+      <div className="p-6 bg-gradient-to-br from-blue-50/50 to-white min-h-screen" data-testid="add-patient-view">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-foreground">Add New Patient</h2>
-            <p className="text-muted-foreground">Enter patient information and upload medical files</p>
+          <div className="mb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">Add New Patient</h1>
+                </div>
+                <div className="text-xs text-gray-600">
+                  Patient Registration & Medical Records
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                {new Date().toLocaleDateString()}
+              </div>
+            </div>
           </div>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Personal Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
+            <Card className="border-blue-100 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Personal Information</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="p-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="name"

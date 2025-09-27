@@ -14,17 +14,28 @@ export default function SEOSettingsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">SEO Settings</h2>
-        <p className="text-muted-foreground">Manage search engine optimization for all pages</p>
+    <div className="p-6 bg-gradient-to-br from-blue-50/50 to-white min-h-screen">
+      <div className="mb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">SEO Settings</h1>
+            </div>
+            <div className="text-xs text-gray-600">
+              Search Engine Optimization Management
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            {new Date().toLocaleDateString()}
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>SEO Management</CardTitle>
+      <Card className="border-blue-100 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">SEO Management</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
           <SEOSettings />
         </CardContent>
       </Card>

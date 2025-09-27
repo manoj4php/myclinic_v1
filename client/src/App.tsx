@@ -88,7 +88,7 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={500} skipDelayDuration={200}>
           <SidebarProvider>
             <Toaster />
             <Router />
