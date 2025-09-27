@@ -73,6 +73,22 @@ export interface IStorage {
   getSEOConfig(path: string): Promise<SEOConfig | undefined>;
   updateSEOConfig(path: string, config: Partial<SEOConfig>): Promise<void>;
   getAllSEOConfigs(): Promise<SEOConfig[]>;
+  
+  // Patient Comments operations
+  getPatientComments(patientId: string): Promise<any[]>;
+  addPatientComment(patientId: string, comment: any): Promise<any>;
+  updatePatientComment(patientId: string, commentId: string, updates: any): Promise<any>;
+  deletePatientComment(patientId: string, commentId: string): Promise<boolean>;
+  
+  // Patient Timeline operations
+  getPatientTimeline(patientId: string): Promise<any[]>;
+  addTimelineEvent(patientId: string, event: any): Promise<any>;
+  
+  // Patient Studies operations
+  getPatientStudies(patientId: string): Promise<any[]>;
+  
+  // Enhanced file storage
+  storePatientFile(patientId: string, fileData: any): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -529,6 +545,220 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error fetching all SEO configs:', error);
       return [];
+    }
+  }
+
+  // Patient Comments operations
+  async getPatientComments(patientId: string): Promise<any[]> {
+    try {
+      // For now, return mock data - in a real implementation, this would use a database table
+      return [
+        {
+          id: '1',
+          content: 'Patient shows good recovery progress',
+          type: 'medical',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          author: {
+            id: 'doctor1',
+            name: 'Dr. Smith',
+            role: 'Doctor'
+          },
+          isEdited: false
+        }
+      ];
+    } catch (error) {
+      console.error('Error fetching patient comments:', error);
+      return [];
+    }
+  }
+
+  async addPatientComment(patientId: string, comment: any): Promise<any> {
+    try {
+      // For now, return the comment with an ID - in a real implementation, this would insert into database
+      return {
+        id: Math.random().toString(36).substr(2, 9),
+        ...comment
+      };
+    } catch (error) {
+      console.error('Error adding patient comment:', error);
+      throw error;
+    }
+  }
+
+  async updatePatientComment(patientId: string, commentId: string, updates: any): Promise<any> {
+    try {
+      // For now, return the updates - in a real implementation, this would update the database
+      return {
+        id: commentId,
+        ...updates
+      };
+    } catch (error) {
+      console.error('Error updating patient comment:', error);
+      throw error;
+    }
+  }
+
+  async deletePatientComment(patientId: string, commentId: string): Promise<boolean> {
+    try {
+      // For now, return true - in a real implementation, this would delete from database
+      return true;
+    } catch (error) {
+      console.error('Error deleting patient comment:', error);
+      return false;
+    }
+  }
+
+  // Patient Timeline operations
+  async getPatientTimeline(patientId: string): Promise<any[]> {
+    try {
+      // For now, return mock timeline data
+      return [
+        {
+          id: '1',
+          type: 'study',
+          title: 'CT Scan Completed',
+          description: 'Chest CT scan has been completed and is ready for review',
+          createdAt: new Date().toISOString(),
+          author: {
+            id: 'tech1',
+            name: 'John Tech',
+            role: 'Technician'
+          },
+          metadata: {
+            studyType: 'CT',
+            status: 'completed'
+          }
+        },
+        {
+          id: '2',
+          type: 'comment',
+          title: 'Doctor Note Added',
+          description: 'Progress note has been added to patient record',
+          createdAt: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+          author: {
+            id: 'doctor1',
+            name: 'Dr. Smith',
+            role: 'Doctor'
+          },
+          metadata: {
+            commentType: 'medical'
+          }
+        }
+      ];
+    } catch (error) {
+      console.error('Error fetching patient timeline:', error);
+      return [];
+    }
+  }
+
+  async addTimelineEvent(patientId: string, event: any): Promise<any> {
+    try {
+      // For now, return the event with an ID - in a real implementation, this would insert into database
+      return {
+        id: Math.random().toString(36).substr(2, 9),
+        ...event
+      };
+    } catch (error) {
+      console.error('Error adding timeline event:', error);
+      throw error;
+    }
+  }
+
+  // Patient Studies operations
+  async getPatientStudies(patientId: string): Promise<any[]> {
+    try {
+      // Get patient data to create study information
+      const patient = await this.getPatient(patientId);
+      if (!patient) {
+        return [];
+      }
+
+      // Create study data from patient information
+      const study = {
+        id: '1',
+        studyInstanceUID: `1.2.840.113619.2.5.${Date.now()}`,
+        studyDate: patient.studyDate ? new Date(patient.studyDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        studyTime: patient.studyTime || new Date().toTimeString().split(' ')[0],
+        studyDescription: patient.studyDesc || `${patient.modality || 'CT'} Study`,
+        modalitiesInStudy: patient.modality ? [patient.modality] : ['CT'],
+        numberOfSeries: 1,
+        numberOfInstances: 150,
+        referringPhysician: patient.refBy || 'Dr. Unknown',
+        studyStatus: patient.reportStatus === 'completed' ? 'completed' : 
+                     patient.reportStatus === 'reviewed' ? 'completed' : 
+                     'in-progress',
+        accessionNumber: patient.accession || `ACC${Date.now().toString().slice(-8)}`,
+        institutionName: patient.center || 'Medical Center',
+        stationName: `${patient.modality || 'CT'}01`,
+        bodyPartExamined: patient.chiefComplaint?.split(' ')[0]?.toUpperCase() || 'CHEST',
+        studyPriority: patient.emergency ? 'urgent' : 'routine',
+        patientPosition: 'HFS',
+        findings: `Study shows ${patient.chiefComplaint || 'examination of patient condition'}. ${patient.reportStatus === 'completed' ? 'Examination completed successfully.' : 'Study in progress.'}`,
+        impression: `${patient.studyDesc || 'Medical imaging study'} - ${patient.reportStatus === 'completed' ? 'Study completed, findings within normal limits.' : 'Pending radiologist review.'}`,
+        recommendations: patient.reportStatus === 'completed' ? 'Follow-up as clinically indicated. Continue current treatment plan.' : 'Awaiting final radiologist interpretation and report.',
+        series: [
+          {
+            id: '1',
+            seriesInstanceUID: `1.2.840.113619.2.5.${Date.now()}.1`,
+            seriesNumber: 1,
+            seriesDescription: `${patient.modality || 'CT'} ${patient.chiefComplaint?.split(' ')[0] || 'Series'}`,
+            modality: patient.modality || 'CT',
+            numberOfInstances: 150,
+            seriesDate: patient.studyDate ? new Date(patient.studyDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            seriesTime: patient.studyTime || new Date().toTimeString().split(' ')[0],
+            bodyPartExamined: patient.chiefComplaint?.split(' ')[0]?.toUpperCase() || 'CHEST',
+            protocolName: `${patient.modality || 'CT'} ${patient.specialty} Protocol`,
+            instances: Array.from({ length: 10 }, (_, i) => ({
+              id: `inst_${i + 1}`,
+              sopInstanceUID: `1.2.840.113619.2.5.${Date.now()}.1.${i + 1}`,
+              instanceNumber: i + 1,
+              imageType: 'ORIGINAL\\PRIMARY',
+              acquisitionDate: patient.studyDate ? new Date(patient.studyDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              acquisitionTime: patient.studyTime || new Date().toTimeString().split(' ')[0],
+              sliceThickness: 1.25,
+              sliceLocation: i * 1.25,
+              thumbnailUrl: undefined
+            }))
+          }
+        ]
+      };
+
+      return [study];
+    } catch (error) {
+      console.error('Error fetching patient studies:', error);
+      return [];
+    }
+  }
+
+  // Enhanced file storage
+  async storePatientFile(patientId: string, fileData: any): Promise<string> {
+    try {
+      // For now, return a mock object ID - in a real implementation, this would use the actual object storage
+      const objectId = Math.random().toString(36).substr(2, 9);
+      
+      // Also create a patient file record
+      const patientFile: InsertPatientFile = {
+        id: fileData.fileId,
+        patientId,
+        fileName: fileData.fileName,
+        fileSize: fileData.fileSize,
+        mimeType: fileData.mimeType,
+        uploadedBy: fileData.uploadedBy,
+        uploadedAt: new Date(fileData.uploadedAt),
+        metadata: JSON.stringify({
+          type: fileData.type,
+          title: fileData.title,
+          notes: fileData.notes,
+          objectId
+        })
+      };
+      
+      await this.createPatientFile(patientFile);
+      return objectId;
+    } catch (error) {
+      console.error('Error storing patient file:', error);
+      throw error;
     }
   }
 }

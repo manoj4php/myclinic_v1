@@ -9,6 +9,9 @@ import Dashboard from "@/pages/Dashboard";
 import PatientManagement from "@/pages/PatientManagement";
 import AddPatient from "@/pages/AddPatient";
 import PatientDetails from "@/pages/PatientDetails";
+import AttachDocumentPage from "@/pages/AttachDocumentPage";
+import CommentsPage from "@/pages/CommentsPage";
+import TimelinePage from "@/pages/TimelinePage";
 import UserManagement from "@/pages/UserManagement";
 import UserDetails from "@/pages/UserDetails";
 import Analytics from "@/pages/Analytics";
@@ -39,6 +42,9 @@ function AuthenticatedLayout() {
           <Route path="/" component={Dashboard} />
           <Route path="/patients" component={PatientManagement} />
           <Route path="/patients/:id" component={PatientDetails} />
+          <Route path="/patients/:id/attach-document" component={({ params }: any) => <AttachDocumentPage patientId={params.id} />} />
+          <Route path="/patients/:id/comments" component={({ params }: any) => <CommentsPage patientId={params.id} />} />
+          <Route path="/patients/:id/timeline" component={({ params }: any) => <TimelinePage patientId={params.id} />} />
           <Route path="/add-patient" component={AddPatient} />
           <Route path="/users" component={UserManagement} />
           <Route path="/users/:id" component={UserDetails} />

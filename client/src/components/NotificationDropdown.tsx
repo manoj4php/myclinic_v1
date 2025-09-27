@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 
 interface Notification {
@@ -46,10 +46,19 @@ export default function NotificationDropdown() {
   });
 
   const markAsReadMutation = useMutation({
-    mutationFn: (notificationId: string) => 
-      fetch(`/api/notifications/${notificationId}/read`, { method: 'PUT' }),
+    mutationFn: async (notificationId: string) => {
+      return await apiRequest('PUT', `/api/notifications/${notificationId}/read`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+    onError: (error) => {
+      console.error('Error marking notification as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      });
     }
   });
 
@@ -81,7 +90,7 @@ export default function NotificationDropdown() {
   };
 
   const unreadNotifications = (notifications as Notification[]).filter((n: Notification) => !n.isRead);
-  const recentNotifications = (notifications as Notification[]).slice(0, 5);
+  const displayNotifications = unreadNotifications.slice(0, 5); // Show only unread, limit to 5
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -117,18 +126,16 @@ export default function NotificationDropdown() {
         <DropdownMenuSeparator />
         
         <ScrollArea className="max-h-80">
-          {recentNotifications.length === 0 ? (
+          {displayNotifications.length === 0 ? (
             <div className="p-4 text-center text-sm text-gray-500">
               <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              No notifications
+              No unread notifications
             </div>
           ) : (
-            recentNotifications.map((notification: Notification) => (
+            displayNotifications.map((notification: Notification) => (
               <DropdownMenuItem
                 key={notification.id}
-                className={`p-3 cursor-pointer focus:bg-gray-50 ${
-                  !notification.isRead ? 'bg-blue-50/50' : ''
-                }`}
+                className="p-3 cursor-pointer focus:bg-gray-50 bg-blue-50/50"
                 onClick={() => handleNotificationClick(notification)}
                 data-testid={`dropdown-notification-${notification.id}`}
               >
@@ -139,14 +146,10 @@ export default function NotificationDropdown() {
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
-                      <p className={`text-sm font-medium truncate ${
-                        !notification.isRead ? 'text-gray-900' : 'text-gray-700'
-                      }`}>
+                      <p className="text-sm font-medium truncate text-gray-900">
                         {notification.title}
                       </p>
-                      {!notification.isRead && (
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full flex-shrink-0" />
-                      )}
+                      <div className="w-1.5 h-1.5 bg-blue-600 rounded-full flex-shrink-0" />
                     </div>
                     
                     <p className="text-xs text-gray-600 line-clamp-2 mb-1">

@@ -1060,6 +1060,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/patients/:id/emergency', isAuthenticated, PatientPermissions.edit, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const updatedBy = req.user?.claims?.sub;
+      const ipAddress = req.ip;
+
+      // Get current patient to toggle emergency status
+      const currentPatient = await storage.getPatient(id);
+      if (!currentPatient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+
+      // Toggle emergency status
+      const newEmergencyStatus = !currentPatient.emergency;
+      
+      const patient = await storage.updatePatient(id, {
+        emergency: newEmergencyStatus,
+        updatedBy,
+        ipAddress,
+      });
+
+      // Create notification
+      await storage.createNotification({
+        userId: updatedBy!,
+        type: 'patient_emergency_updated',
+        title: 'Emergency Status Updated',
+        message: `Patient ${patient.name} emergency status changed to ${newEmergencyStatus ? 'Emergency' : 'Normal'}`,
+        relatedId: patient.id,
+        createdBy: updatedBy,
+        ipAddress,
+      });
+
+      res.json(patient);
+    } catch (error) {
+      console.error("Error updating emergency status:", error);
+      res.status(500).json({ message: "Failed to update emergency status" });
+    }
+  });
+
   app.delete('/api/patients/:id', isAuthenticated, PatientPermissions.delete, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
@@ -1298,6 +1337,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching SEO configs:", error);
       res.status(500).json({ message: "Failed to fetch SEO configurations" });
+    }
+  });
+
+  // Patient Comments APIs
+  app.get('/api/patients/:id/comments', isAuthenticated, PatientPermissions.view, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const comments = await storage.getPatientComments(id);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching patient comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.post('/api/patients/:id/comments', isAuthenticated, PatientPermissions.edit, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { content, type = 'general' } = req.body;
+      
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Comment content is required" });
+      }
+
+      const comment = await storage.addPatientComment(id, {
+        content: content.trim(),
+        type,
+        authorId: req.user.id,
+        authorName: req.user.name,
+        authorRole: req.user.role,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isEdited: false
+      });
+
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Error adding patient comment:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
+  app.put('/api/patients/:id/comments/:commentId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id, commentId } = req.params;
+      const { content } = req.body;
+      
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Comment content is required" });
+      }
+
+      const updatedComment = await storage.updatePatientComment(id, commentId, {
+        content: content.trim(),
+        updatedAt: new Date().toISOString(),
+        isEdited: true
+      });
+
+      if (!updatedComment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      res.json(updatedComment);
+    } catch (error) {
+      console.error("Error updating patient comment:", error);
+      res.status(500).json({ message: "Failed to update comment" });
+    }
+  });
+
+  app.delete('/api/patients/:id/comments/:commentId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id, commentId } = req.params;
+      const success = await storage.deletePatientComment(id, commentId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting patient comment:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
+  // Patient Timeline API
+  app.get('/api/patients/:id/timeline', isAuthenticated, PatientPermissions.view, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const timeline = await storage.getPatientTimeline(id);
+      res.json(timeline);
+    } catch (error) {
+      console.error("Error fetching patient timeline:", error);
+      res.status(500).json({ message: "Failed to fetch timeline" });
+    }
+  });
+
+  // Patient Studies API
+  app.get('/api/patients/:id/studies', isAuthenticated, PatientPermissions.view, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const studies = await storage.getPatientStudies(id);
+      res.json(studies);
+    } catch (error) {
+      console.error("Error fetching patient studies:", error);
+      res.status(500).json({ message: "Failed to fetch studies" });
+    }
+  });
+
+  // Enhanced File Upload for Patient Files
+  app.post('/api/patients/:id/files', isAuthenticated, PatientPermissions.edit, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { type = 'document', title, notes } = req.body;
+      
+      // Handle file uploads (assuming multer middleware is configured)
+      const files = req.files as Express.Multer.File[] || [];
+      
+      if (files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const uploadedFiles = [];
+      
+      for (const file of files) {
+        // Save file using storage system
+        const fileId = crypto.randomUUID();
+        const fileName = file.originalname;
+        const fileSize = file.size;
+        const mimeType = file.mimetype;
+        
+        // Store file in object storage
+        const objectId = await storage.storePatientFile(id, {
+          fileId,
+          fileName,
+          fileSize,
+          mimeType,
+          type,
+          title: title || fileName,
+          notes: notes || '',
+          uploadedBy: req.user.id,
+          uploadedAt: new Date().toISOString(),
+          buffer: file.buffer
+        });
+
+        uploadedFiles.push({
+          id: fileId,
+          fileName,
+          fileSize,
+          mimeType,
+          type,
+          title: title || fileName,
+          notes: notes || '',
+          objectId,
+          uploadedAt: new Date().toISOString()
+        });
+
+        // Add to timeline
+        await storage.addTimelineEvent(id, {
+          type: type === 'report' ? 'report' : 'document',
+          title: `${type === 'report' ? 'Report' : 'Document'} Uploaded`,
+          description: `${title || fileName} has been uploaded`,
+          createdAt: new Date().toISOString(),
+          author: {
+            id: req.user.id,
+            name: req.user.name,
+            role: req.user.role
+          },
+          metadata: {
+            fileCount: 1,
+            fileSize,
+            fileName
+          }
+        });
+      }
+
+      res.status(201).json(uploadedFiles);
+    } catch (error) {
+      console.error("Error uploading patient files:", error);
+      res.status(500).json({ message: "Failed to upload files" });
     }
   });
 

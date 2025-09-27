@@ -49,7 +49,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-card border-b border-border px-4 py-4 md:px-6">
+    <header className="bg-card border-b border-border px-4 py-2 md:px-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {/* Mobile menu button */}
@@ -65,8 +65,8 @@ export default function Header() {
             </Button>
           )}
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground">{pageInfo.title}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-lg md:text-xl font-bold text-foreground">{pageInfo.title}</h1>
+            <p className="text-xs text-muted-foreground">
               {pageInfo.subtitle}, {getDisplayName()}
             </p>
           </div>
@@ -76,7 +76,7 @@ export default function Header() {
           <NotificationDropdown />
           
           {/* Welcome message with logout - hidden on mobile */}
-          <div className="hidden lg:flex items-center space-x-3 text-sm">
+          <div className="hidden lg:flex items-center space-x-2 text-xs">
             <span className="text-foreground">
               Welcome {getDisplayName()}, today is {getFormattedDate()}
             </span>
